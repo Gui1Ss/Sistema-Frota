@@ -81,14 +81,19 @@ class RouteItemBase(BaseModel):
     sequence: Optional[int] = None
     status: Optional[str] = "pending"
 
-
 class RouteItemCreate(BaseModel):
     ordernumber: Optional[str] = None
     sequence: Optional[int] = None
     status: Optional[str] = "pending"
 
+class RouteItemCreateWeb(BaseModel):
+    ordernumber: Optional[str] = None
+    sequence: Optional[int] = None
+    status: Optional[str] = "pending"
+    telefone: str
+
 class RouteWeb(BaseModel):
-    items: list[RouteItemCreate]
+    items: list[RouteItemCreateWeb]
     route: RouteBase
 
 class RouteItemUpdate(BaseModel):

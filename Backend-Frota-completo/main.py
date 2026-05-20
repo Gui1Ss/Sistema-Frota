@@ -217,7 +217,7 @@ def get_erp_pedido_by_numero(numero_pedido: str, db: Session = Depends(get_erp_d
         endereco_data = {}
         if notcodac:
             query_nfenotas = text("""
-                SELECT nfenfanem, nfenmuemi, nfenbaiem, nfennomue, nfenesemi
+                SELECT nfenfanem, ndennumem, nfenbaiem, nfennomue, nfenesemi, nfenfonee
                 FROM nfenotas
                 WHERE nfencodac = :notcodac
                 LIMIT 1
@@ -228,10 +228,12 @@ def get_erp_pedido_by_numero(numero_pedido: str, db: Session = Depends(get_erp_d
             if nfenotas_row:
                 endereco_data = {
                     "nfenfanem": nfenotas_row[0],
-                    "nfenmuemi": nfenotas_row[1],
+                    "ndennumem": nfenotas_row[1],
                     "nfenbaiem": nfenotas_row[2],
                     "nfennomue": nfenotas_row[3],
-                    "nfenesemi": nfenotas_row[4]
+                    "nfenesemi": nfenotas_row[4],
+                    "nfenfonee": nfenotas_row[5],
+                    
                 }
         
         # Juntar dados de DOCTOS
