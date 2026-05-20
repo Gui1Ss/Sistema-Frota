@@ -52,28 +52,28 @@ class Vehicle(VehicleBase):
 
 # --- Routes ---
 class RouteBase(BaseModel):
-    driverId: Optional[int] = None
-    vehicleId: Optional[int] = None
+    driverid: Optional[int] = None
+    vehicleid: Optional[int] = None
     status: Optional[str] = "pending"
 
 class RouteCreate(RouteBase):
     pass
 
 class RouteUpdate(BaseModel):
-    driverId: Optional[int] = None
-    vehicleId: Optional[int] = None
+    driverid: Optional[int] = None
+    vehicleid: Optional[int] = None
     status: Optional[str] = None
 
 class Route(RouteBase):
     id: int
-    createdAt: datetime
-    updatedAt: Optional[datetime] = None
+    createdat: datetime
+    updatedat: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True)
 
 # --- Route Items ---
 class RouteItemBase(BaseModel):
-    routeId: int
-    orderNumber: Optional[str] = None
+    routeid: int
+    ordernumber: Optional[str] = None
     sequence: Optional[int] = None
     status: Optional[str] = "pending"
 
@@ -81,8 +81,8 @@ class RouteItemCreate(RouteItemBase):
     pass
 
 class RouteItemUpdate(BaseModel):
-    routeId: Optional[int] = None
-    orderNumber: Optional[str] = None
+    routeid: Optional[int] = None
+    ordernumber: Optional[str] = None
     sequence: Optional[int] = None
     status: Optional[str] = None
 
@@ -92,7 +92,7 @@ class RouteItem(RouteItemBase):
 
 # --- GPS Tracking ---
 class GPSTrackingBase(BaseModel):
-    routeId: int
+    routeid: int
     latitude: float
     longitude: float
 
@@ -106,7 +106,7 @@ class GPSTracking(GPSTrackingBase):
 
 # --- WhatsApp Notifications ---
 class WhatsAppNotificationBase(BaseModel):
-    routeId: int
+    routeid: int
     phone: str
     message: str
     status: Optional[str] = "sent"
@@ -120,19 +120,19 @@ class WhatsAppNotification(WhatsAppNotificationBase):
 
 # --- Deliveries ---
 class DeliveryBase(BaseModel):
-    routeId: int
-    orderNumber: str
+    routeid: int
+    ordernumber: str
     status: Optional[str] = "pending"
-    deliveredAt: Optional[datetime] = None
+    deliveredat: Optional[datetime] = None
 
 class DeliveryCreate(DeliveryBase):
     pass
 
 class DeliveryUpdate(BaseModel):
-    routeId: Optional[int] = None
-    orderNumber: Optional[str] = None
+    routeid: Optional[int] = None
+    ordernumber: Optional[str] = None
     status: Optional[str] = None
-    deliveredAt: Optional[datetime] = None
+    deliveredat: Optional[datetime] = None
 
 class Delivery(DeliveryBase):
     id: int
