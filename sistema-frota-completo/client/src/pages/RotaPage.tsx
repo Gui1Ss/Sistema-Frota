@@ -158,11 +158,11 @@ export default function RotaPage() {
         ordernumber: p.pedido,
         sequence: index + 1,
         status: "pending"
-      }))
+      })),
       route: {
         driverid: parseInt(selectedDriver),
         vehicleid: parseInt(selectedVehicle),
-        status: "pending",
+        status: "pending"
       }
     };
 
