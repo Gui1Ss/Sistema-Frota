@@ -105,7 +105,8 @@ def create_route(route: schemas.RouteWeb, db: Session = Depends(get_db)):
     route = crud.create_route(db=db, route=route.route) 
     if len(lista_pedidos)>0:
         for i in lista_pedidos:
-            res = crud.create_route_item(db, item=i)
+            item = i.routeid = route.id
+            res = crud.create_route_item(db, item=item)
             print(res)
     return {
         route,
