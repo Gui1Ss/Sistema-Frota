@@ -101,16 +101,24 @@ def delete_vehicle(vehicle_id: int, db: Session = Depends(get_db)):
 # --- ROUTES ENDPOINTS ---
 @app.post("/routes/", response_model=schemas.RouteWeb)
 def create_route(route: schemas.RouteWeb, db: Session = Depends(get_db)):
-    lista_pedidos = route.items        
-    route = crud.create_route(db=db, route=route.route) 
-    if len(lista_pedidos)>0:
-        for i in lista_pedidos:
-            item = i.routeid = route.id
-            res = crud.create_route_item(db, item=item)
-            print(res)
+
+    lista_pedidos = route.items
+
+    nova_rota = crud.create_route(db=db, route=route.route)
+
+    for i in lista_pedidos:
+        item_data = {
+            "routeid": nova_rota.id,
+            "ordernumber": i.ordernumber,
+            "sequence": i.sequence,
+            "status": i.status
+        }
+
+        crud.create_route_item(db=db, item=item_data)
+
     return {
-        route,
-        lista_pedidos
+        "route": nova_rota,
+        "items": lista_pedidos
     }
 
 @app.get("/routes/", response_model=List[schemas.Route])

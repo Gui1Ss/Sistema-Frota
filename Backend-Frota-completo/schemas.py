@@ -81,12 +81,13 @@ class RouteItemBase(BaseModel):
     sequence: Optional[int] = None
     status: Optional[str] = "pending"
 
-class RouteWeb(BaseModel):
-    items: list[RouteItemBase]
-    route: RouteBase
 
 class RouteItemCreate(RouteItemBase):
     pass
+
+class RouteWeb(BaseModel):
+    items: list[RouteItemCreate]
+    route: RouteBase
 
 class RouteItemUpdate(BaseModel):
     routeid: Optional[int] = None
