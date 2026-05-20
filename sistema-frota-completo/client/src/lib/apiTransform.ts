@@ -1,9 +1,9 @@
 /**
  * Transformação de dados entre Frontend e Backend FastAPI
- * 
+ *
  * O frontend usa nomenclatura em português (nome, cpf, cnh)
  * O backend FastAPI usa nomenclatura em inglês (name, phone, licenseNumber)
- * 
+ *
  * Este arquivo mapeia automaticamente entre os dois formatos
  */
 
@@ -25,9 +25,9 @@ export interface DriverApiPayload {
   name: string;
   phone: string;
   cpf: string;
-  licenseNumber: string;
-  licenseExpiry?: string;
-  licenseCategory?: string;
+  licensenumber: string;
+  licenseexpiry?: string;
+  licensecategory?: string;
   status?: string;
 }
 
@@ -36,9 +36,9 @@ export const transformDriverToApi = (formData: DriverFormData): DriverApiPayload
     name: formData.nome,
     phone: formData.telefone,
     cpf: formData.cpf,
-    licenseNumber: formData.cnh,
-    licenseExpiry: formData.cnhValidade || undefined,
-    licenseCategory: formData.categoria || "D",
+    licensenumber: formData.cnh,
+    licenseexpiry: formData.cnhValidade || undefined,
+    licensecategory: formData.categoria || "D",
     status: "active"
   };
 };

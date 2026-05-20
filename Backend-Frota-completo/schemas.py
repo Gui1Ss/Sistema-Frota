@@ -7,9 +7,9 @@ class DriverBase(BaseModel):
     name: str
     phone: Optional[str] = None
     cpf: Optional[str] = None
-    licenseNumber: Optional[str] = None
-    licenseCategory: Optional[str] = None
-    licenseExpiry: Optional[datetime] = None
+    licensenumber: Optional[str] = None
+    licensecategory: Optional[str] = None
+    licenseexpiry: Optional[datetime] = None
     status: Optional[str] = "active"
 
 class DriverCreate(DriverBase):
@@ -19,9 +19,9 @@ class DriverUpdate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
     cpf: Optional[str] = None
-    licenseNumber: Optional[str] = None
-    licenseCategory: Optional[str] = None
-    licenseExpiry: Optional[datetime] = None
+    licensenumber: Optional[str] = None
+    licensecategory: Optional[str] = None
+    licenseexpiry: Optional[datetime] = None
     status: Optional[str] = None
 
 class Driver(DriverBase):

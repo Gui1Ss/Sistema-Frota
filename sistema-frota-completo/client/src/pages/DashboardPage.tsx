@@ -11,7 +11,7 @@ export default function DashboardPage() {
     queryKey: ['dashboard-summary'],
     queryFn: async () => {
       try {
-        const response = await api.get('/dashboard/summary');
+        const response = await api.get('/dashboard');
         return response.data;
       } catch (e) {
         console.warn("Usando dados mockados para o Dashboard (FastAPI offline)");

@@ -1,6 +1,23 @@
 from sqlalchemy.orm import Session
 import models, schemas
 
+
+def get_dashboard(db: Session):
+        countDriver = db.query(models.Driver).count()
+        countVehicle = db.query(models.Vehicle).count()
+        countRoute = db.query(models.Route).count()
+        countDelivery = db.query(models.Delivery).count()
+        countDeliveryPendent = db.query(models.Delivery).filter(models.Delivery.deliveredat.is_(None)).count()
+        countDeliveryFinish = db.query(models.Delivery).filter(models.Delivery.deliveredat.is_(None)).count()
+        return{
+                'motoristas': countDriver,
+                'veiculos': countVehicle,
+                'rotas': countRoute,
+                'entregas': countDelivery,
+                'entregasPendentes': countDeliveryPendent,
+                'entregasConcluidas': countDeliveryFinish
+}
+
 # Generic CRUD helper functions
 def get_item(db: Session, model, item_id: int):
     return db.query(model).filter(model.id == item_id).first()

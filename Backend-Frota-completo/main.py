@@ -8,7 +8,7 @@ import json
 
 
 apikey = 'citrix21'
-# Nota: Em produção, você usaria migrations (Alembic). 
+# Nota: Em produção, você usaria migrations (Alembic).
 # Aqui, garantimos que as tabelas existam se o usuário não importar o SQL manualmente.
 
 def mensagem(instance: str, number: str, text: str):
@@ -148,6 +148,12 @@ def delete_delivery(delivery_id: int, db: Session = Depends(get_db)):
     crud.delete_item(db, models.Delivery, delivery_id)
     return {"message": "Delivery deleted"}
 
+# --- Dashboard ---
+
+@app.get("/dashboard")
+def get_dashboard(db: Session = Depends(get_db)):
+        return crud.get_dashboard(db)
+
 # --- WebSocket (GPS) ---
 
 @app.websocket("/gps")
@@ -160,9 +166,8 @@ async def websocket_gps(websocket: WebSocket):
         print(data)
 
         await websocket.send_text(f"Chegou! \n {data}")
-    
+
         await websocket.send_text(f"Chegou! \n {data['id']}")
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
