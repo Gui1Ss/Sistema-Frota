@@ -47,7 +47,7 @@ class RouteItem(Base):
     __tablename__ = "route_items"
     id = Column(Integer, primary_key=True, index=True)
     routeid = Column(Integer, ForeignKey("routes.id"))
-    orderiumber = Column(String)
+    ordernumber = Column(String)
     sequence = Column(Integer)
     status = Column(String, default="pending")
 
