@@ -82,8 +82,10 @@ class RouteItemBase(BaseModel):
     status: Optional[str] = "pending"
 
 
-class RouteItemCreate(RouteItemBase):
-    pass
+class RouteItemCreate(BaseModel):
+    ordernumber: Optional[str] = None
+    sequence: Optional[int] = None
+    status: Optional[str] = "pending"
 
 class RouteWeb(BaseModel):
     items: list[RouteItemCreate]
