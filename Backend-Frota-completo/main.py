@@ -235,8 +235,7 @@ def get_erp_pedido_by_numero(numero_pedido: str, db: Session = Depends(get_erp_d
                     "nfenbaiem": nfenotas_row[2],
                     "nfennomue": nfenotas_row[3],
                     "nfenesemi": nfenotas_row[4],
-                    "nfenfonee": nfenotas_row[5],
-                    
+                    "nfenfonee": nfenotas_row[5]
                 }
         
         # Juntar dados de DOCTOS
