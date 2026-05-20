@@ -82,7 +82,7 @@ class RouteItemBase(BaseModel):
     status: Optional[str] = "pending"
 
 class RouteWeb(BaseModel):
-    items: List[RouteItemBase]
+    items: list[RouteItemBase]
     route: RouteBase
 
 class RouteItemCreate(RouteItemBase):
