@@ -220,7 +220,7 @@ def get_erp_pedido_by_numero(numero_pedido: str, db: Session = Depends(get_erp_d
         endereco_data = {}
         if notcodac:
             query_nfenotas = text("""
-                SELECT nfenfanem, ndennumem, nfenbaiem, nfennomue, nfenesemi, nfenfonee
+                SELECT nfenfanem, ndenmuemi, nfenbaiem, nfennomue, nfenesemi, nfenfonee
                 FROM nfenotas
                 WHERE nfencodac = :notcodac
                 LIMIT 1
