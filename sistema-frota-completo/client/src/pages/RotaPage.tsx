@@ -158,7 +158,7 @@ export default function RotaPage() {
         ordernumber: p.pedido,
         sequence: index + 1,
         status: "pending",
-        telefone: p.nfenfonee
+        telefone: String(p.nfenfonee || "")
       })),
       route: {
         driverid: parseInt(selectedDriver),
