@@ -7,10 +7,19 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, Trash2, Check } from "lucide-react";
+import { Plus, Search, Trash2, Check, Truck, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function RotaPage() {
   const queryClient = useQueryClient();
@@ -20,6 +29,7 @@ export default function RotaPage() {
   const [selectedVehicle, setSelectedVehicle] = useState("");
   const [pedidosBuscados, setPedidosBuscados] = useState<any[]>([]);
   const [searchingPedido, setSearchingPedido] = useState(false);
+  const [confirmSaidaRotaId, setConfirmSaidaRotaId] = useState<number | null>(null);
 
   // Buscar motoristas
   const { data: drivers, isLoading: driversLoading } = useQuery({
@@ -84,6 +94,21 @@ export default function RotaPage() {
     }
   });
 
+  // Marcar rota como saiu para entrega
+  const saidaEntregaMutation = useMutation({
+    mutationFn: (routeId: number) => api.post(`/routes/${routeId}/saiu-entrega`),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['routes'] });
+      toast.success(`✅ Rota marcada como em entrega! ${data.pedidos_notificados} pedidos notificados`);
+      setConfirmSaidaRotaId(null);
+    },
+    onError: (error: any) => {
+      console.error("Erro ao marcar saída:", error);
+      toast.error("Erro: " + (error.response?.data?.detail || error.message));
+      setConfirmSaidaRotaId(null);
+    }
+  });
+
   // Buscar pedido do ERP
   const handleSearchPedido = async () => {
     if (!numeroPedido.trim()) {
@@ -93,18 +118,15 @@ export default function RotaPage() {
 
     setSearchingPedido(true);
     try {
-      // Buscar pedido do banco ERP
       const response = await api.get(`/erp/pedidos/${numeroPedido}`);
       const pedido = response.data;
 
-      // Verificar se pedido já foi adicionado
       if (pedidosBuscados.some(p => p.pedido === pedido.pedido)) {
         toast.warning("Este pedido já foi adicionado");
         setNumeroPedido("");
         return;
       }
 
-      // Adicionar sequência
       const pedidoComSequencia = {
         ...pedido,
         sequencia: pedidosBuscados.length + 1
@@ -128,7 +150,6 @@ export default function RotaPage() {
   // Remover pedido da lista
   const handleRemovePedido = (index: number) => {
     const novosPedidos = pedidosBuscados.filter((_, i) => i !== index);
-    // Recalcular sequências
     const pedidosAtualizados = novosPedidos.map((p, i) => ({
       ...p,
       sequencia: i + 1
@@ -152,22 +173,23 @@ export default function RotaPage() {
       return;
     }
 
-    // Preparar dados da rota
     const routeData = {
+      driverid: parseInt(selectedDriver),
+      vehicleid: parseInt(selectedVehicle),
+      status: "pending",
       items: pedidosBuscados.map((p, index) => ({
         ordernumber: p.pedido,
         sequence: index + 1,
-        status: "pending",
-        telefone: String(p.nfenfonee || "")
-      })),
-      route: {
-        driverid: parseInt(selectedDriver),
-        vehicleid: parseInt(selectedVehicle),
         status: "pending"
-      }
+      }))
     };
 
     createRouteMutation.mutate(routeData);
+  };
+
+  // Confirmar saída para entrega
+  const handleConfirmSaida = (routeId: number) => {
+    setConfirmSaidaRotaId(routeId);
   };
 
   return (
@@ -183,13 +205,13 @@ export default function RotaPage() {
           </Button>
         </div>
 
+        {/* Dialog para criar rota */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Criar Nova Rota</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              {/* Seleção de Motorista e Veículo */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="driver">Motorista *</Label>
@@ -231,7 +253,6 @@ export default function RotaPage() {
                 </div>
               </div>
 
-              {/* Busca de Pedidos */}
               <div className="border-t pt-4">
                 <Label htmlFor="pedido">Buscar Pedidos no ERP</Label>
                 <div className="flex gap-2 mt-2">
@@ -251,7 +272,6 @@ export default function RotaPage() {
                 </div>
               </div>
 
-              {/* Lista de Pedidos Adicionados */}
               {pedidosBuscados.length > 0 && (
                 <div className="border-t pt-4">
                   <Label>Pedidos Adicionados ({pedidosBuscados.length})</Label>
@@ -269,7 +289,7 @@ export default function RotaPage() {
                             {pedido.nfenfanem}, {pedido.ndennumem} - {pedido.nfennomue}, {pedido.nfenesemi}
                           </div>
                           <div className="text-xs text-slate-500 mt-1">
-                            CNPJ/CPF: {pedido.nosempcgc} | Sequência: {pedido.sequencia}
+                            CNPJ: {pedido.nosempcgc} | Sequência: {pedido.sequencia}
                           </div>
                         </div>
                         <Button
@@ -286,7 +306,6 @@ export default function RotaPage() {
                 </div>
               )}
 
-              {/* Botões de Ação */}
               <div className="flex gap-2 justify-end pt-4 border-t">
                 <Button
                   variant="outline"
@@ -312,6 +331,32 @@ export default function RotaPage() {
           </DialogContent>
         </Dialog>
 
+        {/* Dialog de confirmação para saída */}
+        <AlertDialog open={confirmSaidaRotaId !== null} onOpenChange={(open) => !open && setConfirmSaidaRotaId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertCircle className="text-yellow-600" />
+                Confirmar Saída para Entrega
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja marcar a rota #{confirmSaidaRotaId} como "Saiu para Entrega"? 
+                Mensagens WhatsApp serão enviadas para os clientes.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="flex gap-2 justify-end">
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => confirmSaidaRotaId && saidaEntregaMutation.mutate(confirmSaidaRotaId)}
+                disabled={saidaEntregaMutation.isPending}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {saidaEntregaMutation.isPending ? "Processando..." : "Confirmar"}
+              </AlertDialogAction>
+            </div>
+          </AlertDialogContent>
+        </AlertDialog>
+
         {/* Tabela de Rotas */}
         <Card className="overflow-hidden">
           <table className="w-full">
@@ -322,12 +367,13 @@ export default function RotaPage() {
                 <th className="px-6 py-3 text-left">Veículo</th>
                 <th className="px-6 py-3 text-left">Status</th>
                 <th className="px-6 py-3 text-left">Criada em</th>
+                <th className="px-6 py-3 text-left">Ações</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-4">
+                  <td colSpan={6} className="px-6 py-4">
                     <Skeleton className="h-4 w-full" />
                   </td>
                 </tr>
@@ -335,6 +381,8 @@ export default function RotaPage() {
                 rotas.map((rota: any) => {
                   const driver = drivers?.find((d: any) => d.id === rota.driverid);
                   const vehicle = vehicles?.find((v: any) => v.id === rota.vehicleid);
+                  const isPending = rota.status === "pending";
+                  
                   return (
                     <tr key={rota.id} className="border-b hover:bg-slate-50">
                       <td className="px-6 py-4 font-semibold">#{rota.id}</td>
@@ -347,18 +395,34 @@ export default function RotaPage() {
                           rota.status === "completed" ? "bg-green-100 text-green-800" :
                           "bg-slate-100 text-slate-800"
                         }`}>
-                          {rota.status}
+                          {rota.status === "pending" ? "Pendente" :
+                           rota.status === "in_progress" ? "Em Entrega" :
+                           rota.status === "completed" ? "Concluída" :
+                           rota.status}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-600">
                         {new Date(rota.createdat).toLocaleDateString("pt-BR")}
+                      </td>
+                      <td className="px-6 py-4">
+                        {isPending && (
+                          <Button
+                            onClick={() => handleConfirmSaida(rota.id)}
+                            disabled={saidaEntregaMutation.isPending}
+                            className="gap-2 bg-green-600 hover:bg-green-700"
+                            size="sm"
+                          >
+                            <Truck size={16} />
+                            Saiu para Entrega
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   );
                 })
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-slate-600">
+                  <td colSpan={6} className="px-6 py-8 text-center text-slate-600">
                     Nenhuma rota encontrada
                   </td>
                 </tr>

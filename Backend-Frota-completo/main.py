@@ -263,6 +263,120 @@ def get_erp_pedido_by_numero(numero_pedido: str, db: Session = Depends(get_erp_d
 def get_dashboard(db: Session = Depends(get_db)):
         return crud.get_dashboard(db)
 
+# Adicionar este endpoint ao main.py
+
+@app.post("/routes/{route_id}/saiu-entrega")
+def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Session = Depends(get_erp_db)):
+    """
+    Atualizar rota para 'em entrega' e enviar WhatsApp para cada pedido
+    """
+    try:
+        # 1. Buscar rota
+        rota = db.query(models.Route).filter(models.Route.id == route_id).first()
+        if not rota:
+            raise HTTPException(status_code=404, detail="Rota não encontrada")
+        
+        # 2. Buscar itens da rota
+        itens = db.query(models.RouteItem).filter(models.RouteItem.routeid == route_id).all()
+        if not itens:
+            raise HTTPException(status_code=404, detail="Nenhum pedido encontrado nesta rota")
+        
+        # 3. Para cada pedido, buscar dados do ERP e enviar WhatsApp
+        pedidos_processados = []
+        
+        for item in itens:
+            try:
+                # Buscar dados do pedido no ERP
+                query_doctos = text("""
+                    SELECT d.nosempant, d.nosempcgc, d.notcodac
+                    FROM doctos d
+                    WHERE d.notpedido = :numero_pedido
+                    LIMIT 1
+                """)
+                result_doctos = erp_db.execute(query_doctos, {"numero_pedido": item.ordernumber})
+                doctos_row = result_doctos.fetchone()
+                
+                if not doctos_row:
+                    continue
+                
+                # Buscar endereço
+                query_nfenotas = text("""
+                    SELECT nfenfanem, ndennumem, nfenbaiem, nfennomue, nfenesemi
+                    FROM nfenotas
+                    WHERE nfencodac = :notcodac
+                    LIMIT 1
+                """)
+                result_nfenotas = erp_db.execute(query_nfenotas, {"notcodac": doctos_row[2]})
+                nfenotas_row = result_nfenotas.fetchone()
+                
+                # Buscar telefone do cliente (pode estar em outra tabela)
+                # Ajuste conforme sua estrutura de banco
+                query_telefone = text("""
+                    SELECT nosemfone
+                    FROM doctos
+                    WHERE notpedido = :numero_pedido
+                    LIMIT 1
+                """)
+                result_telefone = erp_db.execute(query_telefone, {"numero_pedido": item.ordernumber})
+                telefone_row = result_telefone.fetchone()
+                
+                telefone = telefone_row[0] if telefone_row and telefone_row[0] else None
+                
+                # Preparar dados do pedido
+                pedido_data = {
+                    "numero_pedido": item.ordernumber,
+                    "cliente_nome": doctos_row[0],
+                    "cnpj": doctos_row[1],
+                    "telefone": telefone,
+                    "endereco": nfenotas_row[0] if nfenotas_row else None,
+                    "numero": nfenotas_row[1] if nfenotas_row else None,
+                    "bairro": nfenotas_row[2] if nfenotas_row else None,
+                    "cidade": nfenotas_row[3] if nfenotas_row else None,
+                    "estado": nfenotas_row[4] if nfenotas_row else None,
+                }
+                
+                # Enviar WhatsApp se houver telefone
+                if telefone:
+                    try:
+                        mensagem(
+                            instance="leandro",
+                            number=telefone,
+                            text=f"Olá {doctos_row[0]}, seu pedido #{item.ordernumber} saiu para entrega! 🚚"
+                        )
+                    except Exception as e:
+                        print(f"Erro ao enviar WhatsApp para {telefone}: {str(e)}")
+                
+                pedidos_processados.append(pedido_data)
+                
+                # Atualizar status do item
+                item.status = "in_progress"
+                db.add(item)
+                
+            except Exception as e:
+                print(f"Erro ao processar pedido {item.ordernumber}: {str(e)}")
+                continue
+        
+        # 4. Atualizar status da rota
+        rota.status = "in_progress"
+        db.add(rota)
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": f"Rota {route_id} marcada como em entrega",
+            "pedidos_notificados": len(pedidos_processados),
+            "pedidos": pedidos_processados
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"Erro ao marcar rota como saiu para entrega: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro: {str(e)}")
+
+
+
 # --- WebSocket (GPS) ---
 
 @app.websocket("/gps")
@@ -281,3 +395,4 @@ async def websocket_gps(websocket: WebSocket):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
