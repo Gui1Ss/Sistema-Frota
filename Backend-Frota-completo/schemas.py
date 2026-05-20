@@ -70,12 +70,20 @@ class Route(RouteBase):
     updatedat: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True)
 
+
+
+
+
 # --- Route Items ---
 class RouteItemBase(BaseModel):
     routeid: int
     ordernumber: Optional[str] = None
     sequence: Optional[int] = None
     status: Optional[str] = "pending"
+
+class RouteWeb():
+    items: List[RouteItemBase]
+    route: RouteBase
 
 class RouteItemCreate(RouteItemBase):
     pass

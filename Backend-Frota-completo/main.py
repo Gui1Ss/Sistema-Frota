@@ -99,9 +99,18 @@ def delete_vehicle(vehicle_id: int, db: Session = Depends(get_db)):
     return {"message": "Vehicle deleted"}
 
 # --- ROUTES ENDPOINTS ---
-@app.post("/routes/", response_model=schemas.Route)
-def create_route(route: schemas.RouteCreate, db: Session = Depends(get_db)):
-    return crud.create_route(db=db, route=route)
+@app.post("/routes/", response_model=schemas.RouteWeb)
+def create_route(route: schemas.RouteWeb, db: Session = Depends(get_db)):
+    lista_pedidos = route.items        
+    route = crud.create_route(db=db, route=route.route) 
+    if len(lista_pedidos)>0:
+        for i in lista_pedidos:
+            res = crud.create_route_item(db, item=i)
+            print(res)
+    return {
+        route,
+        lista_pedidos
+    }
 
 @app.get("/routes/", response_model=List[schemas.Route])
 def read_routes(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
