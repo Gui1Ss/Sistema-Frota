@@ -266,7 +266,7 @@ export default function RotaPage() {
                             {pedido.nfenfanem}, {pedido.ndennumem} - {pedido.nfennomue}, {pedido.nfenesemi}
                           </div>
                           <div className="text-xs text-slate-500 mt-1">
-                            CNPJ: {pedido.nosempcgc} | Sequência: {pedido.sequencia}
+                            CNPJ/CPF: {pedido.nosempcgc} | Sequência: {pedido.sequencia}
                           </div>
                         </div>
                         <Button
