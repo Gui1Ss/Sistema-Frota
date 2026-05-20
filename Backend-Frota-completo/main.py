@@ -5,11 +5,24 @@ import models, schemas, crud
 from database import engine, get_db
 import requests
 import json
+from sqlalchemy import create_engine, text
 
 
 apikey = 'citrix21'
-# Nota: Em produção, você usaria migrations (Alembic).
-# Aqui, garantimos que as tabelas existam se o usuário não importar o SQL manualmente.
+
+# Conexão com banco ERP
+ERP_DATABASE_URL = "postgresql://postgres:postgres@192.168.1.17:5432/salutem"
+erp_engine = create_engine(ERP_DATABASE_URL)
+
+def get_erp_db():
+    """Conexão com banco ERP"""
+    from sqlalchemy.orm import sessionmaker
+    ERPSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=erp_engine)
+    db = ERPSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 def mensagem(instance: str, number: str, text: str):
     r = requests.post(f"http://192.168.1.171:8080/message/sendText/{instance}", json={
@@ -20,15 +33,11 @@ def mensagem(instance: str, number: str, text: str):
         "apikey": apikey
     })
 
-
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Logistics Management API")
 
-from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
@@ -148,6 +157,84 @@ def delete_delivery(delivery_id: int, db: Session = Depends(get_db)):
     crud.delete_item(db, models.Delivery, delivery_id)
     return {"message": "Delivery deleted"}
 
+# --- ERP PEDIDOS ENDPOINTS ---
+
+@app.get("/erp/pedidos/{numero_pedido}")
+def get_erp_pedido_by_numero(numero_pedido: str, db: Session = Depends(get_erp_db)):
+    """
+    Buscar pedido do banco ERP com 3 queries:
+    1. PEDIDO - informações do pedido
+    2. DOCTOS - informações da nota (cliente, CNPJ, código de acesso)
+    3. nfenotas - endereço da nota
+    """
+    try:
+        # Query 1: Buscar na tabela PEDIDO
+        query_pedido = text("""
+            SELECT * FROM pedido
+            WHERE pedido = :numero_pedido
+            LIMIT 1
+        """)
+        result_pedido = db.execute(query_pedido, {"numero_pedido": numero_pedido})
+        pedido_row = result_pedido.fetchone()
+        
+        if not pedido_row:
+            raise HTTPException(status_code=404, detail="Pedido não encontrado")
+        
+        # Query 2: Buscar na tabela DOCTOS usando o número do pedido
+        query_doctos = text("""
+            SELECT * FROM doctos
+            WHERE notpedido = :numero_pedido
+            LIMIT 1
+        """)
+        result_doctos = db.execute(query_doctos, {"numero_pedido": numero_pedido})
+        doctos_row = result_doctos.fetchone()
+        
+        if not doctos_row:
+            raise HTTPException(status_code=404, detail="Nota fiscal não encontrada para este pedido")
+        
+        # Extrair notcodac para buscar endereço
+        notcodac = doctos_row._mapping.get('notcodac') if hasattr(doctos_row, '_mapping') else doctos_row[doctos_row.keys().index('notcodac')] if hasattr(doctos_row, 'keys') else None
+        
+        # Query 3: Buscar na tabela nfenotas usando notcodac
+        endereco_data = {}
+        if notcodac:
+            query_nfenotas = text("""
+                SELECT nfenfanem, ndennumem, nfenbaiem, nfennomue, nfenesemi
+                FROM nfenotas
+                WHERE nfencodac = :notcodac
+                LIMIT 1
+            """)
+            result_nfenotas = db.execute(query_nfenotas, {"notcodac": notcodac})
+            nfenotas_row = result_nfenotas.fetchone()
+            
+            if nfenotas_row:
+                endereco_data = {
+                    "nfenfanem": nfenotas_row[0],
+                    "ndennumem": nfenotas_row[1],
+                    "nfenbaiem": nfenotas_row[2],
+                    "nfennomue": nfenotas_row[3],
+                    "nfenesemi": nfenotas_row[4]
+                }
+        
+        # Juntar dados de DOCTOS
+        doctos_data = {
+            "nosempant": doctos_row._mapping.get('nosempant') if hasattr(doctos_row, '_mapping') else doctos_row[doctos_row.keys().index('nosempant')] if hasattr(doctos_row, 'keys') else None,
+            "nosempcgc": doctos_row._mapping.get('nosempcgc') if hasattr(doctos_row, '_mapping') else doctos_row[doctos_row.keys().index('nosempcgc')] if hasattr(doctos_row, 'keys') else None,
+        }
+        
+        # Retornar dados combinados
+        return {
+            "pedido": numero_pedido,
+            **doctos_data,
+            **endereco_data
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Erro ao buscar pedido: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar pedido do ERP: {str(e)}")
+
 # --- Dashboard ---
 
 @app.get("/dashboard")
@@ -168,6 +255,7 @@ async def websocket_gps(websocket: WebSocket):
         await websocket.send_text(f"Chegou! \n {data}")
 
         await websocket.send_text(f"Chegou! \n {data['id']}")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
