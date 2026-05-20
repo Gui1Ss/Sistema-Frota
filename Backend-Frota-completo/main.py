@@ -116,6 +116,9 @@ def create_route(route: schemas.RouteWeb, db: Session = Depends(get_db)):
 
         crud.create_route_item(db=db, item=item_data)
 
+        print(i.telefone)
+        mensagem("leandro", "5511975534028", "Seu pedido já está sendo separado!")
+
     return {
         "route": nova_rota,
         "items": lista_pedidos
