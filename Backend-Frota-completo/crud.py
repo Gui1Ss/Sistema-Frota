@@ -84,11 +84,13 @@ def update_route(db: Session, route_id: int, route: schemas.RouteUpdate):
     return db_route
 
 # --- Route Items ---
-def create_route_item(db: Session, item: schemas.RouteItemCreate):
-    db_item = models.RouteItem(**item.model_dump())
+def create_route_item(db: Session, item):
+    db_item = models.RouteItem(**item)
+
     db.add(db_item)
     db.commit()
     db.refresh(db_item)
+
     return db_item
 
 def update_route_item(db: Session, item_id: int, item: schemas.RouteItemUpdate):
