@@ -190,7 +190,7 @@ export default function RotaPage() {
         vehicleid: parseInt(selectedVehicle),
         status: "pending",
         deliveryaddress: primeiroPedido?.nfenfanem || null,
-        deliverynumber: primeiroPedido?.nfenmuemi || primeiroPedido?.ndennumem || null,
+        deliverynumber: String(primeiroPedido?.nfenmuemi) || null,
         deliverydistrict: primeiroPedido?.nfenbaiem || null,
         deliverycity: primeiroPedido?.nfennomue || null,
         deliverystate: primeiroPedido?.nfenesemi || null,
