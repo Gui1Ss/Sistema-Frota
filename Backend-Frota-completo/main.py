@@ -229,7 +229,7 @@ def get_erp_pedido_by_numero(numero_pedido: str, db: Session = Depends(get_erp_d
         # Query 1: Buscar na tabela PEDIDO
         query_pedido = text("""
             SELECT *, empresa.emptelef as telefone FROM pedido, empresa
-            WHERE pedido = :numero_pedido
+            WHERE pedido = :numero_pedido AND deposito = 1
             LIMIT 1
         """)
         result_pedido = db.execute(query_pedido, {"numero_pedido": numero_pedido})
