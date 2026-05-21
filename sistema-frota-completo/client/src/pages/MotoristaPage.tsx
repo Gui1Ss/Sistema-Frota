@@ -261,9 +261,9 @@ export default function MotoristaPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold">{motorista.nome}</h3>
-                    <p className="text-sm text-slate-600">CPF: {motorista.cpf}</p>
-                    <p className="text-sm text-slate-600">CNH: {motorista.licensenumber} (motorista.licensecategory) <span className="font-bold">Expira</span></p>
-                    <p className="text-sm text-slate-600">Telefone: {motorista.telefone}</p>
+                    <p className="text-sm text-slate-600"><span className="font-medium">CPF:</span> {motorista.cpf}</p>
+                    <p className="text-sm text-slate-600"><span className="font-medium">CNH:</span> {motorista.licensenumber} ({motorista.licensecategory}) <span className="font-bold">expira em: ({motorista.lincenseexpiry})</span></p>
+                    <p className="text-sm text-slate-600"><span className="font-medium">Telefone:</span> {motorista.telefone}</p>
                   </div>
                   <div className="flex gap-2">
                     <Button 
