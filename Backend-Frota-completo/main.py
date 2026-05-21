@@ -342,7 +342,7 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
                 
                 # Buscar endereço
                 query_nfenotas = text("""
-                    SELECT nfenfanem, ndennumem, nfenbaiem, nfennomue, nfenesemi
+                    SELECT nfenfanem, nfenmuemi, nfenbaiem, nfennomue, nfenesemi
                     FROM nfenotas
                     WHERE nfencodac = :notcodac
                     LIMIT 1
