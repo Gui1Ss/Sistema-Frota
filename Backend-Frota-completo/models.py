@@ -78,6 +78,7 @@ class Delivery(Base):
     id = Column(Integer, primary_key=True, index=True)
     routeid = Column(Integer, ForeignKey("routes.id"))
     ordernumber = Column(String)
+    clientname = Column(String)
     status = Column(String, default="pending")
     deliveredat = Column(DateTime)
 
