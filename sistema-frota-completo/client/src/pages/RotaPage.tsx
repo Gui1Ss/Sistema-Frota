@@ -96,10 +96,13 @@ export default function RotaPage() {
 
   // Marcar rota como saiu para entrega
   const saidaEntregaMutation = useMutation({
-    mutationFn: (routeId: number) => api.post(`/routes/${routeId}/saiu-entrega`),
+    mutationFn: (routeId: number) => api.post(`/routes/${routeId}/saiu-entrega`).then((res) => res.data),
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['routes'] });
-      toast.success(`✅ Rota marcada como em entrega! ${data.pedidos_notificados} pedidos notificados`);
+      const notifiedCount = Array.isArray(data)
+        ? data.length
+        : (data?.pedidos_notificados ?? 0);
+      toast.success(`✅ Rota marcada como em entrega! ${notifiedCount} pedidos notificados`);
       setConfirmSaidaRotaId(null);
     },
     onError: (error: any) => {
