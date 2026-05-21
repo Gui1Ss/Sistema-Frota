@@ -390,12 +390,11 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
                     "estado": nfenotas_row[4] if nfenotas_row else None,
                 }
                 
-                delivery = {
-                    "routeid": item.routeid,
-                    "ordernumber": item.ordernumber,
-                    "status":"Em rota"
-
-                }
+                delivery = schemas.DeliveryCreate(
+                    routeid=item.routeid,
+                    ordernumber=item.ordernumber,
+                    status="Em rota"
+                )
 
                 entrega = crud.create_delivery(db=db, delivery=delivery)
                 # Enviar WhatsApp se houver telefone
