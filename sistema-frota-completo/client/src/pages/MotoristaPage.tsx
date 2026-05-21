@@ -262,7 +262,7 @@ export default function MotoristaPage() {
                   <div>
                     <h3 className="font-semibold">{motorista.nome}</h3>
                     <p className="text-sm text-slate-600"><span className="font-medium">CPF:</span> {motorista.cpf}</p>
-                    <p className="text-sm text-slate-600"><span className="font-medium">CNH:</span> {motorista.licensenumber} ({motorista.licensecategory}) | <span className="font-bold">expira em: ({new Date(motorista.lincenseexpiry).toISOString()})</span></p>
+                    <p className="text-sm text-slate-600"><span className="font-medium">CNH:</span> {motorista.licensenumber} ({motorista.licensecategory}) | <span className="font-bold">expira em: ({new Date(motorista.lincenseexpiry.replace(" ", "T")).toLocaleString("pt-BR")})</span></p>
                     <p className="text-sm text-slate-600"><span className="font-medium">Telefone:</span> {motorista.telefone}</p>
                   </div>
                   <div className="flex gap-2">
