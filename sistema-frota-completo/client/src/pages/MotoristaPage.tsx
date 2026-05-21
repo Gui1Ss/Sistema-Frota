@@ -263,7 +263,7 @@ export default function MotoristaPage() {
                     <h3 className="font-semibold">{motorista.nome}</h3>
                     <p className="text-sm text-slate-600"><span className="font-medium">CPF:</span> {motorista.cpf}</p>
                     <p className="text-sm text-slate-600">
-                      <span className="font-medium">CNH:</span> {motorista.cnh} ({motorista.categoria}) | <span className="font-bold">expira em: ({motorista.cnhValidade ? new Date(String(motorista.cnhValidade).replace(" ", "T")).toLocaleString("pt-BR") : '—'})</span>
+                      <span className="font-medium">CNH:</span> {motorista.cnh} ({motorista.categoria}) | <span className="font-bold">expira em: ({motorista.cnhValidade ? new Date(String(motorista.cnhValidade).replace(" ", "T")).toLocaleDateString("pt-BR") : '—'})</span>
                     </p>
                     <p className="text-sm text-slate-600"><span className="font-medium">Telefone:</span> {motorista.telefone}</p>
                   </div>
