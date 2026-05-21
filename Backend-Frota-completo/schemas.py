@@ -103,10 +103,17 @@ class RouteItemCreate(BaseModel):
     status: Optional[str] = "pending"
 
 class RouteItemCreateWeb(BaseModel):
-    ordernumber: Optional[str] = None
-    sequence: Optional[int] = None
+    driverid: Optional[int] = None
+    vehicleid: Optional[int] = None
     status: Optional[str] = "pending"
-    telefone: str
+    deliveryaddress: Optional[str] = None
+    deliverynumber: Optional[str] = None
+    deliverydistrict: Optional[str] = None
+    deliverycity: Optional[str] = None
+    deliverystate: Optional[str] = None
+    deliveryzipcode: Optional[str] = None
+    deliverylatitude: Optional[float] = None
+    deliverylongitude: Optional[float] = None
 
 class RouteWeb(BaseModel):
     items: list[RouteItemCreateWeb]
