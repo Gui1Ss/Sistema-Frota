@@ -369,7 +369,7 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
                     WHERE empresa.empresa = :numero_empresa AND empresa.empdemptip = 'Cliente'
                     LIMIT 1
                 """)
-                result_telefone = erp_db.execute(query_telefone, {"numero_empresa": query_rempresa.empresa})
+                result_telefone = erp_db.execute(query_telefone, {"numero_empresa": query_empresa.empresa})
                 telefone_row = result_telefone.fetchone()
                 
                 if not telefone_row:
