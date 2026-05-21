@@ -228,13 +228,13 @@ def get_erp_pedido_by_numero(numero_pedido: str, db: Session = Depends(get_erp_d
     try:
         # Query 1: Buscar na tabela PEDIDO
         query_pedido = text("""
-            SELECT *, empresa.emptelef as telefone FROM pedido, empresa
-            WHERE pedido = :numero_pedido AND deposito = 1 AND pedusu NOT LIKE '%MICHELE%RT%'
+            SELECT *, empresa.emptelef FROM pedido, empresa
+            WHERE pedido.pedido = :numero_pedido AND pedido.deposito = 1 AND pedido.pedusu NOT LIKE '%MICHELE%RT%'
             LIMIT 1
         """)
         result_pedido = db.execute(query_pedido, {"numero_pedido": numero_pedido})
         pedido_row = result_pedido.fetchone()
-        telefone = pedido_row.telefone
+        telefone = pedido_row.emptelef
         if not pedido_row:
             raise HTTPException(status_code=404, detail="Pedido não encontrado")
         
