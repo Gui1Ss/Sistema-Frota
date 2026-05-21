@@ -27,7 +27,15 @@ CREATE TABLE IF NOT EXISTS routes (
     vehicleId INTEGER REFERENCES vehicles(id),
     status VARCHAR(20) DEFAULT 'pending',
     createdAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updatedAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updatedAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deliveryAddress VARCHAR(255),
+    deliveryNumber VARCHAR(50),
+    deliveryDistrict VARCHAR(120),
+    deliveryCity VARCHAR(120),
+    deliveryState VARCHAR(50),
+    deliveryZipCode VARCHAR(20),
+    deliveryLatitude DOUBLE PRECISION,
+    deliveryLongitude DOUBLE PRECISION
 );
 
 -- Tabela de Itens da Rota

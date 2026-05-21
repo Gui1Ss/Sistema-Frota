@@ -176,6 +176,8 @@ export default function RotaPage() {
       return;
     }
 
+    const primeiroPedido = pedidosBuscados[0];
+
     const routeData = {
       items: pedidosBuscados.map((p, index) => ({
         ordernumber: p.pedido,
@@ -186,7 +188,13 @@ export default function RotaPage() {
       route: {
         driverid: parseInt(selectedDriver),
         vehicleid: parseInt(selectedVehicle),
-        status: "pending"
+        status: "pending",
+        deliveryaddress: primeiroPedido?.nfenfanem || null,
+        deliverynumber: primeiroPedido?.nfenmuemi || primeiroPedido?.ndennumem || null,
+        deliverydistrict: primeiroPedido?.nfenbaiem || null,
+        deliverycity: primeiroPedido?.nfennomue || null,
+        deliverystate: primeiroPedido?.nfenesemi || null,
+        deliveryzipcode: primeiroPedido?.cep || primeiroPedido?.nfencepem || null
       }
     };
 
@@ -372,6 +380,7 @@ export default function RotaPage() {
                 <th className="px-6 py-3 text-left">Motorista</th>
                 <th className="px-6 py-3 text-left">Veículo</th>
                 <th className="px-6 py-3 text-left">Status</th>
+                <th className="px-6 py-3 text-left">Destino</th>
                 <th className="px-6 py-3 text-left">Criada em</th>
                 <th className="px-6 py-3 text-left">Ações</th>
               </tr>
@@ -379,7 +388,7 @@ export default function RotaPage() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-4">
+                  <td colSpan={7} className="px-6 py-4">
                     <Skeleton className="h-4 w-full" />
                   </td>
                 </tr>
@@ -408,6 +417,9 @@ export default function RotaPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-600">
+                        {[rota.deliveryaddress, rota.deliverynumber, rota.deliverycity, rota.deliverystate].filter(Boolean).join(", ") || "Não informado"}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-600">
                         {new Date(rota.createdat).toLocaleDateString("pt-BR")}
                       </td>
                       <td className="px-6 py-4">
@@ -428,7 +440,7 @@ export default function RotaPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-slate-600">
+                  <td colSpan={7} className="px-6 py-8 text-center text-slate-600">
                     Nenhuma rota encontrada
                   </td>
                 </tr>

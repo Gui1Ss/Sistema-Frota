@@ -175,3 +175,58 @@
     }
   }
 }
+
+.vehicle-map-marker {
+  align-items: center;
+  background: #2563eb;
+  border: 3px solid #ffffff;
+  border-radius: 9999px;
+  box-shadow: 0 10px 25px rgb(15 23 42 / 35%);
+  color: #ffffff;
+  display: flex;
+  height: 44px;
+  justify-content: center;
+  width: 44px;
+}
+
+.destination-map-marker {
+  align-items: center;
+  background: #16a34a;
+  border: 3px solid #ffffff;
+  border-radius: 9999px 9999px 9999px 0;
+  box-shadow: 0 8px 20px rgb(15 23 42 / 25%);
+  color: #ffffff;
+  display: flex;
+  height: 34px;
+  justify-content: center;
+  transform: rotate(-45deg);
+  width: 34px;
+}
+
+.destination-map-marker svg {
+  transform: rotate(45deg);
+}
+
+.vehicle-map-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 220px;
+  color: #0f172a;
+}
+
+.vehicle-map-popup strong {
+  color: #1d4ed8;
+  font-size: 14px;
+}
+
+.vehicle-map-popup span {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.maplibregl-popup-content {
+  border-radius: 12px;
+  box-shadow: 0 15px 35px rgb(15 23 42 / 20%);
+  padding: 12px;
+}

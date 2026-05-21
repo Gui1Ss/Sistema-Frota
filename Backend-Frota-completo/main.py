@@ -174,7 +174,7 @@ def create_gps_tracking(tracking: schemas.GPSTrackingCreate, db: Session = Depen
 
 @app.get("/gps-tracking/{route_id}", response_model=List[schemas.GPSTracking])
 def read_gps_tracking(route_id: int, db: Session = Depends(get_db)):
-    return db.query(models.GPSTracking).filter(models.GPSTracking.routeId == route_id).all()
+    return db.query(models.GPSTracking).filter(models.GPSTracking.routeid == route_id).all()
 
 
 
@@ -304,6 +304,58 @@ def get_erp_pedido_by_numero(numero_pedido: str, db: Session = Depends(get_erp_d
 def get_dashboard(db: Session = Depends(get_db)):
         return crud.get_dashboard(db)
 
+@app.get("/dashboard/vehicle-map")
+def get_dashboard_vehicle_map(db: Session = Depends(get_db)):
+    """Retorna veículos em rota/entrega com última localização GPS e endereço de destino."""
+    rotas = db.query(models.Route).filter(models.Route.status == "in_progress").all()
+    vehicles_map = []
+
+    for rota in rotas:
+        last_tracking = (
+            db.query(models.GPSTracking)
+            .filter(models.GPSTracking.routeid == rota.id)
+            .order_by(models.GPSTracking.timestamp.desc())
+            .first()
+        )
+
+        if not last_tracking:
+            continue
+
+        vehicles_map.append({
+            "routeid": rota.id,
+            "status": rota.status,
+            "vehicle": {
+                "id": rota.vehicle.id if rota.vehicle else None,
+                "name": rota.vehicle.name if rota.vehicle else None,
+                "plate": rota.vehicle.plate if rota.vehicle else None,
+                "type": rota.vehicle.type if rota.vehicle else None,
+                "capacity": rota.vehicle.capacity if rota.vehicle else None,
+                "status": rota.vehicle.status if rota.vehicle else None,
+            },
+            "driver": {
+                "id": rota.driver.id if rota.driver else None,
+                "name": rota.driver.name if rota.driver else None,
+                "phone": rota.driver.phone if rota.driver else None,
+            },
+            "currentLocation": {
+                "latitude": last_tracking.latitude,
+                "longitude": last_tracking.longitude,
+                "timestamp": last_tracking.timestamp,
+            },
+            "destination": {
+                "address": rota.deliveryaddress,
+                "number": rota.deliverynumber,
+                "district": rota.deliverydistrict,
+                "city": rota.deliverycity,
+                "state": rota.deliverystate,
+                "zipcode": rota.deliveryzipcode,
+                "latitude": rota.deliverylatitude,
+                "longitude": rota.deliverylongitude,
+            },
+        })
+
+    return vehicles_map
+
 # Adicionar este endpoint ao main.py
 
 @app.post("/routes/{route_id}/saiu-entrega")
@@ -410,6 +462,14 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
                 #         print(f"Erro ao enviar WhatsApp para {telefone}: {str(e)}")
                 
                 pedidos_processados.append(pedido_data)
+
+                if not rota.deliveryaddress and nfenotas_row:
+                    rota.deliveryaddress = nfenotas_row[0]
+                    rota.deliverynumber = str(nfenotas_row[1]) if nfenotas_row[1] is not None else None
+                    rota.deliverydistrict = nfenotas_row[2]
+                    rota.deliverycity = nfenotas_row[3]
+                    rota.deliverystate = nfenotas_row[4]
+                    db.add(rota)
                 
                 # Atualizar status do item
                 item.status = "in_progress"

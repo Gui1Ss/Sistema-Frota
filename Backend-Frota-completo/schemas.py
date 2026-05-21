@@ -55,6 +55,14 @@ class RouteBase(BaseModel):
     driverid: Optional[int] = None
     vehicleid: Optional[int] = None
     status: Optional[str] = "pending"
+    deliveryaddress: Optional[str] = None
+    deliverynumber: Optional[str] = None
+    deliverydistrict: Optional[str] = None
+    deliverycity: Optional[str] = None
+    deliverystate: Optional[str] = None
+    deliveryzipcode: Optional[str] = None
+    deliverylatitude: Optional[float] = None
+    deliverylongitude: Optional[float] = None
 
 class RouteCreate(RouteBase):
     pass
@@ -63,6 +71,14 @@ class RouteUpdate(BaseModel):
     driverid: Optional[int] = None
     vehicleid: Optional[int] = None
     status: Optional[str] = None
+    deliveryaddress: Optional[str] = None
+    deliverynumber: Optional[str] = None
+    deliverydistrict: Optional[str] = None
+    deliverycity: Optional[str] = None
+    deliverystate: Optional[str] = None
+    deliveryzipcode: Optional[str] = None
+    deliverylatitude: Optional[float] = None
+    deliverylongitude: Optional[float] = None
 
 class Route(RouteBase):
     id: int
