@@ -138,7 +138,7 @@ class WhatsAppNotification(WhatsAppNotificationBase):
 class DeliveryBase(BaseModel):
     routeid: int
     ordernumber: str
-    status: Optional[str] = "pending"
+    status: Optional[str] = "Pendente"
     deliveredat: Optional[datetime] = None
 
 class DeliveryCreate(DeliveryBase):

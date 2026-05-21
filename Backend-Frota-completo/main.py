@@ -364,12 +364,12 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
                 
                 
                 query_telefone = text("""
-                    SELECT empresa.emptelef as telef
+                    SELECT empresa.emptelef
                     FROM empresa
                     WHERE empresa.empresa = :numero_empresa AND empresa.empdemptip = 'Cliente'
                     LIMIT 1
                 """)
-                result_telefone = erp_db.execute(query_telefone, {"numero_pedido": empresatelef.telef})
+                result_telefone = erp_db.execute(query_telefone, {"numero_pedido": query_telefone.emptelef})
                 telefone_row = result_telefone.fetchone()
                 
                 if not telefone_row:
@@ -392,7 +392,7 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
                 
                 delivery = {
                     "routeid": item.routeid,
-                    "ordernumber": item.orderumber,
+                    "ordernumber": item.ordernumber,
                     "status":"Em rota"
 
                 }
@@ -402,12 +402,12 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
 
                 deliverys.append(entrega)
 
-                if telefone:
-                    try:
-                        mensagem("leandro", "5511975534028", f"Seu pedido já está sendo separado!\n - Número da rota: {item.id}\n - Número do pedido: {item.ordernumber}\n *STATUS*: {item.status}")
-                        mensagem("leandro", "5511989642157", f"Seu pedido já está sendo separado!\n - Número da rota: {item.id}\n - Número do pedido: {item.ordernumber}\n *STATUS*: {item.status}")
-                    except Exception as e:
-                        print(f"Erro ao enviar WhatsApp para {telefone}: {str(e)}")
+                # if telefone:
+                #     try:
+                #         mensagem("leandro", "5511975534028", f"Seu pedido já está sendo separado!\n - Número da rota: {item.id}\n - Número do pedido: {item.ordernumber}\n *STATUS*: {item.status}")
+                #         mensagem("leandro", "5511989642157", f"Seu pedido já está sendo separado!\n - Número da rota: {item.id}\n - Número do pedido: {item.ordernumber}\n *STATUS*: {item.status}")
+                #     except Exception as e:
+                #         print(f"Erro ao enviar WhatsApp para {telefone}: {str(e)}")
                 
                 pedidos_processados.append(pedido_data)
                 
