@@ -8,7 +8,7 @@ def get_dashboard(db: Session):
         countRoute = db.query(models.Route).count()
         countDelivery = db.query(models.Delivery).count()
         countDeliveryPendent = db.query(models.Delivery).filter(models.Delivery.deliveredat.is_(None)).count()
-        countDeliveryFinish = db.query(models.Delivery).filter(models.Delivery.deliveredat.is_(None)).count()
+        countDeliveryFinish = db.query(models.Delivery).filter(models.Delivery.deliveredat.isnot(None)).count()
         return{
                 'motoristas': countDriver,
                 'veiculos': countVehicle,
