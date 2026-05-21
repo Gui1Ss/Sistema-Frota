@@ -393,6 +393,7 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
                 delivery = schemas.DeliveryCreate(
                     routeid=item.routeid,
                     ordernumber=item.ordernumber,
+                    clientname=doctos_row[0],
                     status="Em rota"
                 )
 

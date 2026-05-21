@@ -53,8 +53,8 @@ export default function EntregaPage() {
               ) : deliveries && deliveries.length > 0 ? (
                 deliveries.map((delivery: any, index: number) => (
                   <tr key={index} className="border-b hover:bg-slate-50">
-                    <td className="px-6 py-4 font-semibold">#{delivery.numeroPedido}</td>
-                    <td className="px-6 py-4">{delivery.nomeCliente}</td>
+                    <td className="px-6 py-4 font-semibold">#{delivery.ordernumber}</td>
+                    <td className="px-6 py-4">{delivery.clientname}</td>
                     <td className="px-6 py-4">
                       <Badge className={getStatusColor(delivery.status)}>{delivery.status}</Badge>
                     </td>
