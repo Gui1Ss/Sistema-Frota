@@ -324,7 +324,7 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
         
         # 3. Para cada pedido, buscar dados do ERP e enviar WhatsApp
         pedidos_processados = []
-        
+        deliverys = []
         for item in itens:
             try:
                 # Buscar dados do pedido no ERP
@@ -390,7 +390,18 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
                     "estado": nfenotas_row[4] if nfenotas_row else None,
                 }
                 
+                delivery = {
+                    "routeid": item.routeid,
+                    "ordernumber": item.orderumber,
+                    "status":"Em rota"
+
+                }
+
+                entrega = crud.create_delivery(db=db, delivery=delivery)
                 # Enviar WhatsApp se houver telefone
+
+                deliverys.append(entrega)
+
                 if telefone:
                     try:
                         mensagem("leandro", "5511975534028", f"Seu pedido já está sendo separado!\n - Número da rota: {item.id}\n - Número do pedido: {item.ordernumber}\n *STATUS*: {item.status}")
@@ -413,11 +424,14 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
         db.add(rota)
         db.commit()
         
+        
+
         return {
             "success": True,
             "message": f"Rota {route_id} marcada como em entrega",
             "pedidos_notificados": len(pedidos_processados),
-            "pedidos": pedidos_processados
+            "pedidos": pedidos_processados,
+            "entregas": deliverys
         }
         
     except HTTPException:
