@@ -55,7 +55,11 @@ def send_message():
     return "OK"
 
 
+
 # --- DRIVERS ENDPOINTS ---
+
+
+
 @app.post("/drivers/", response_model=schemas.Driver)
 def create_driver(driver: schemas.DriverCreate, db: Session = Depends(get_db)):
     return crud.create_driver(db=db, driver=driver)
@@ -80,7 +84,12 @@ def delete_driver(driver_id: int, db: Session = Depends(get_db)):
     crud.delete_item(db, models.Driver, driver_id)
     return {"message": "Driver deleted"}
 
+
+
 # --- VEHICLES ENDPOINTS ---
+
+
+
 @app.post("/vehicles/", response_model=schemas.Vehicle)
 def create_vehicle(vehicle: schemas.VehicleCreate, db: Session = Depends(get_db)):
     return crud.create_vehicle(db=db, vehicle=vehicle)
@@ -98,7 +107,13 @@ def delete_vehicle(vehicle_id: int, db: Session = Depends(get_db)):
     crud.delete_item(db, models.Vehicle, vehicle_id)
     return {"message": "Vehicle deleted"}
 
+
+
 # --- ROUTES ENDPOINTS ---
+
+
+
+
 @app.post("/routes/", response_model=schemas.RouteWeb)
 def create_route(route: schemas.RouteWeb, db: Session = Depends(get_db)):
 
@@ -117,7 +132,8 @@ def create_route(route: schemas.RouteWeb, db: Session = Depends(get_db)):
         crud.create_route_item(db=db, item=item_data)
 
         print(i.telefone)
-        mensagem("leandro", "5511975534028", "Seu pedido já está sendo separado!")
+        mensagem("leandro", "5511975534028", f"Seu pedido já está sendo separado!\n - Número da rota: {nova_rota.id}\n - Número do pedido: {i.ordernumber}\n *STATUS*: {i.status}")
+        mensagem("leandro", "5511989642157", f"Seu pedido já está sendo separado!\n - Número da rota: {nova_rota.id}\n - Número do pedido: {i.ordernumber}\n *STATUS*: {i.status}")
 
     return {
         "route": nova_rota,
@@ -137,7 +153,12 @@ def delete_route(route_id: int, db: Session = Depends(get_db)):
     crud.delete_item(db, models.Route, route_id)
     return {"message": "Route deleted"}
 
+
+
 # --- ROUTE ITEMS ENDPOINTS ---
+
+
+
 @app.post("/route-items/", response_model=schemas.RouteItem)
 def create_route_item(item: schemas.RouteItemCreate, db: Session = Depends(get_db)):
     return crud.create_route_item(db=db, item=item)
@@ -155,12 +176,24 @@ def create_gps_tracking(tracking: schemas.GPSTrackingCreate, db: Session = Depen
 def read_gps_tracking(route_id: int, db: Session = Depends(get_db)):
     return db.query(models.GPSTracking).filter(models.GPSTracking.routeId == route_id).all()
 
+
+
+
 # --- WHATSAPP NOTIFICATIONS ENDPOINTS ---
+
+
+
+
 @app.post("/whatsapp-notifications/", response_model=schemas.WhatsAppNotification)
 def create_notification(notification: schemas.WhatsAppNotificationCreate, db: Session = Depends(get_db)):
     return crud.create_whatsapp_notification(db=db, notification=notification)
 
+
+
 # --- DELIVERIES ENDPOINTS ---
+
+
+
 @app.post("/deliveries/", response_model=schemas.Delivery)
 def create_delivery(delivery: schemas.DeliveryCreate, db: Session = Depends(get_db)):
     return crud.create_delivery(db=db, delivery=delivery)
@@ -178,7 +211,11 @@ def delete_delivery(delivery_id: int, db: Session = Depends(get_db)):
     crud.delete_item(db, models.Delivery, delivery_id)
     return {"message": "Delivery deleted"}
 
+
+
 # --- ERP PEDIDOS ENDPOINTS ---
+
+
 
 @app.get("/erp/pedidos/{numero_pedido}")
 def get_erp_pedido_by_numero(numero_pedido: str, db: Session = Depends(get_erp_db)):
@@ -257,7 +294,11 @@ def get_erp_pedido_by_numero(numero_pedido: str, db: Session = Depends(get_erp_d
         print(f"Erro ao buscar pedido: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erro ao buscar pedido do ERP: {str(e)}")
 
+
+
 # --- Dashboard ---
+
+
 
 @app.get("/dashboard")
 def get_dashboard(db: Session = Depends(get_db)):
@@ -311,16 +352,30 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
                 
                 # Buscar telefone do cliente (pode estar em outra tabela)
                 # Ajuste conforme sua estrutura de banco
-                query_telefone = text("""
-                    SELECT empresa.emptelef
-                    FROM empresa
-                    WHERE notpedido = :numero_pedido
+                
+                query_empresa = text("""
+                    SELECT pedido.pedcliente
+                    FROM pedido
+                    WHERE pedido.pedido = :numero_pedido
                     LIMIT 1
                 """)
-                result_telefone = erp_db.execute(query_telefone, {"numero_pedido": item.ordernumber})
+                result_empresa = erp_db.execute(query_empresa, {"numero_pedido": item.ordernumber})
+                empresatelef = result_empresa.fetchone()
+                
+                
+                query_telefone = text("""
+                    SELECT empresa.emptelef as telef
+                    FROM empresa
+                    WHERE empresa.empresa = :numero_empresa AND empresa.empdemptip = 'Cliente'
+                    LIMIT 1
+                """)
+                result_telefone = erp_db.execute(query_telefone, {"numero_pedido": empresatelef.telef})
                 telefone_row = result_telefone.fetchone()
                 
-                telefone = telefone_row[0] if telefone_row and telefone_row[0] else None
+                if not telefone_row:
+                    print(f"O cliente do pedido {item.ordernumber} Não é do tipo 'Cliente'")
+                else:    
+                    telefone = telefone_row[0] if telefone_row and telefone_row[0] else None
                 
                 # Preparar dados do pedido
                 pedido_data = {
@@ -338,11 +393,8 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
                 # Enviar WhatsApp se houver telefone
                 if telefone:
                     try:
-                        mensagem(
-                            instance="leandro",
-                            number=telefone,
-                            text=f"Olá {doctos_row[0]}, seu pedido #{item.ordernumber} saiu para entrega! 🚚"
-                        )
+                        mensagem("leandro", "5511975534028", f"Seu pedido já está sendo separado!\n - Número da rota: {item.id}\n - Número do pedido: {item.ordernumber}\n *STATUS*: {item.status}")
+                        mensagem("leandro", "5511989642157", f"Seu pedido já está sendo separado!\n - Número da rota: {item.id}\n - Número do pedido: {item.ordernumber}\n *STATUS*: {item.status}")
                     except Exception as e:
                         print(f"Erro ao enviar WhatsApp para {telefone}: {str(e)}")
                 
