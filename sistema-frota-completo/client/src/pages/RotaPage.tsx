@@ -174,14 +174,16 @@ export default function RotaPage() {
     }
 
     const routeData = {
-      driverid: parseInt(selectedDriver),
-      vehicleid: parseInt(selectedVehicle),
-      status: "pending",
       items: pedidosBuscados.map((p, index) => ({
         ordernumber: p.pedido,
         sequence: index + 1,
         status: "pending"
-      }))
+      })),
+      route: {
+        driverid: parseInt(selectedDriver),
+        vehicleid: parseInt(selectedVehicle),
+        status: "pending"
+      }
     };
 
     createRouteMutation.mutate(routeData);
