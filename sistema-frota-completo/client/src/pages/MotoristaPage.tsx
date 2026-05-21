@@ -42,17 +42,17 @@ export default function MotoristaPage() {
     queryKey: ['drivers'],
     queryFn: async () => {
       const response = await api.get('/drivers/');
-      // Transformar dados da API para o formato do frontend
+      // Transformar dados da API para o formato do frontend (usar nomes exatos da API)
       return response.data.map((driver: any) => ({
         ...driver,
-        // Adicionar campos transformados para exibição
         nome: driver.name,
         cpf: driver.cpf,
-        cnh: driver.licenseNumber,
+        // A API retorna campos em minúsculas: licensenumber, licenseexpiry, licensecategory
+        cnh: driver.licensenumber || driver.licenseNumber || "",
         telefone: driver.phone,
         email: driver.email,
-        cnhValidade: driver.licenseExpiry,
-        categoria: driver.licenseCategory,
+        cnhValidade: driver.licenseexpiry || driver.licenseExpiry || "",
+        categoria: driver.licensecategory || driver.licenseCategory || "",
       }));
     }
   });
