@@ -15,11 +15,11 @@ export default function EntregaPage() {
   });
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case "pendente": return "bg-yellow-100 text-yellow-700";
-      case "em_rota": return "bg-blue-100 text-blue-700";
+      case "em rota": return "bg-blue-100 text-blue-700";
       case "entregue": return "bg-green-100 text-green-700";
-      case "nao_entregue": return "bg-red-100 text-red-700";
+      case "nao entregue": return "bg-red-100 text-red-700";
       default: return "bg-slate-100 text-slate-700";
     }
   };
