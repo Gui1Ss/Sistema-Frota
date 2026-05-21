@@ -177,7 +177,8 @@ export default function RotaPage() {
       items: pedidosBuscados.map((p, index) => ({
         ordernumber: p.pedido,
         sequence: index + 1,
-        status: "pending"
+        status: "pending",
+        telefone: p.telefone
       })),
       route: {
         driverid: parseInt(selectedDriver),

@@ -191,13 +191,13 @@ def get_erp_pedido_by_numero(numero_pedido: str, db: Session = Depends(get_erp_d
     try:
         # Query 1: Buscar na tabela PEDIDO
         query_pedido = text("""
-            SELECT * FROM pedido
+            SELECT *, empresa.emptelef as telefone FROM pedido, empresa
             WHERE pedido = :numero_pedido
             LIMIT 1
         """)
         result_pedido = db.execute(query_pedido, {"numero_pedido": numero_pedido})
         pedido_row = result_pedido.fetchone()
-        
+        telefone = pedido_row.telefone
         if not pedido_row:
             raise HTTPException(status_code=404, detail="Pedido não encontrado")
         
@@ -220,7 +220,7 @@ def get_erp_pedido_by_numero(numero_pedido: str, db: Session = Depends(get_erp_d
         endereco_data = {}
         if notcodac:
             query_nfenotas = text("""
-                SELECT nfenfanem, nfenmuemi, nfenbaiem, nfennomue, nfenesemi, nfenfonee
+                SELECT nfenfanem, nfenmuemi, nfenbaiem, nfennomue, nfenesemi
                 FROM nfenotas
                 WHERE nfencodac = :notcodac
                 LIMIT 1
@@ -235,7 +235,7 @@ def get_erp_pedido_by_numero(numero_pedido: str, db: Session = Depends(get_erp_d
                     "nfenbaiem": nfenotas_row[2],
                     "nfennomue": nfenotas_row[3],
                     "nfenesemi": nfenotas_row[4],
-                    "nfenfonee": nfenotas_row[5]
+                    "telefone": telefone
                 }
         
         # Juntar dados de DOCTOS
@@ -312,8 +312,8 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
                 # Buscar telefone do cliente (pode estar em outra tabela)
                 # Ajuste conforme sua estrutura de banco
                 query_telefone = text("""
-                    SELECT nosemfone
-                    FROM doctos
+                    SELECT empresa.emptelef
+                    FROM empresa
                     WHERE notpedido = :numero_pedido
                     LIMIT 1
                 """)
