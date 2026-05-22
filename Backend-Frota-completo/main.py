@@ -455,13 +455,16 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
 
                 deliverys.append(entrega)
 
-                # if telefone:
-                #     try:
-                #         mensagem("leandro", "5511975534028", f"Seu pedido já está sendo separado!\n - Número da rota: {item.id}\n - Número do pedido: {item.ordernumber}\n *STATUS*: {item.status}")
-                #         mensagem("leandro", "5511989642157", f"Seu pedido já está sendo separado!\n - Número da rota: {item.id}\n - Número do pedido: {item.ordernumber}\n *STATUS*: {item.status}")
-                #     except Exception as e:
-                #         print(f"Erro ao enviar WhatsApp para {telefone}: {str(e)}")
+                if telefone:
+                    try:
+                        mensagem("leandro", "5511975534028", f"Seu pedido já está sendo separado!\n - Número da rota: {item.id}\n - Número do pedido: {item.ordernumber}\n *STATUS*: {item.status}")
+                        crud.create_whatsapp_notification(db, route_id, "5511975534028", f"Seu pedido já está sendo separado!\n - Número da rota: {item.id}\n - Número do pedido: {item.ordernumber}\n *STATUS*: {item.status}")
+                        mensagem("leandro", "5511989642157", f"Seu pedido já está sendo separado!\n - Número da rota: {item.id}\n - Número do pedido: {item.ordernumber}\n *STATUS*: {item.status}")
+                        crud.create_whatsapp_notification(db, route_id, "5511989642157", f"Seu pedido já está sendo separado!\n - Número da rota: {item.id}\n - Número do pedido: {item.ordernumber}\n *STATUS*: {item.status}")
+                    except Exception as e:
+                        print(f"Erro ao enviar WhatsApp para {telefone}: {str(e)}")
                 
+
                 pedidos_processados.append(pedido_data)
 
                 if not rota.deliveryaddress and nfenotas_row:

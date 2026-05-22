@@ -141,7 +141,7 @@ class WhatsAppNotificationBase(BaseModel):
     routeid: int
     phone: str
     message: str
-    status: Optional[str] = "sent"
+    status: Optional[str] = "enviado"
 
 class WhatsAppNotificationCreate(WhatsAppNotificationBase):
     pass
