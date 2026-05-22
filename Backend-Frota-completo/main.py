@@ -257,12 +257,13 @@ def get_erp_pedido_by_numero(numero_pedido: str, db: Session = Depends(get_erp_d
         endereco_data = {}
         if notcodac:
             query_nfenotas = text("""
-                SELECT nfenfanem, nfenmuemi, nfenbaiem, nfennomue, nfenesemi
-                FROM nfenotas
-                WHERE nfencodac = :notcodac
+                SELECT pedido.pedentend, pedido.pedentbair, cidade.cidnome, pedido.pedentuf, pedido.pedentcep
+                FROM pedido
+                JOIN cidade ON pedido.pedentcid = cidade.cidade
+                WHERE pedido.pedido = :num_pedido
                 LIMIT 1
             """)
-            result_nfenotas = db.execute(query_nfenotas, {"notcodac": notcodac})
+            result_nfenotas = db.execute(query_nfenotas, {"num_pedido": numero_pedido})
             nfenotas_row = result_nfenotas.fetchone()
             
             if nfenotas_row:
