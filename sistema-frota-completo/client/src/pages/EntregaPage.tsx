@@ -1,11 +1,17 @@
 import MainLayout from "@/components/MainLayout";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Search } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { useState } from "react";
 
 export default function EntregaPage() {
+  const [searchQuery, setSearchQuery] = useState("");
+
   const { data: deliveries, isLoading } = useQuery({
     queryKey: ['deliveries'],
     queryFn: async () => {
@@ -24,6 +30,16 @@ export default function EntregaPage() {
     }
   };
 
+  // Filtrar entregas por busca
+  const filteredDeliveries = deliveries?.filter((delivery: any) => {
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      delivery.ordernumber.toLowerCase().includes(searchLower) ||
+      (delivery.clientname || "").toLowerCase().includes(searchLower) ||
+      delivery.status.toLowerCase().includes(searchLower)
+    );
+  }) || [];
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -32,6 +48,21 @@ export default function EntregaPage() {
           <p className="text-slate-600 mt-2">Acompanhar status de todas as entregas</p>
         </div>
 
+        {/* Barra de busca */}
+        <Card className="p-4">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Buscar por número do pedido, cliente ou status..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1"
+            />
+            <Button variant="outline" size="sm">
+              <Search size={16} />
+            </Button>
+          </div>
+        </Card>
+
         <Card className="overflow-hidden">
           <table className="w-full">
             <thead className="bg-slate-100 border-b">
@@ -39,6 +70,7 @@ export default function EntregaPage() {
                 <th className="px-6 py-3 text-left">Pedido</th>
                 <th className="px-6 py-3 text-left">Cliente</th>
                 <th className="px-6 py-3 text-left">Status</th>
+                <th className="px-6 py-3 text-left">Data de Entrega</th>
               </tr>
             </thead>
             <tbody>
@@ -48,20 +80,26 @@ export default function EntregaPage() {
                     <td className="px-6 py-4"><Skeleton className="h-4 w-16" /></td>
                     <td className="px-6 py-4"><Skeleton className="h-4 w-32" /></td>
                     <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
+                    <td className="px-6 py-4"><Skeleton className="h-4 w-24" /></td>
                   </tr>
                 ))
-              ) : deliveries && deliveries.length > 0 ? (
-                deliveries.map((delivery: any, index: number) => (
+              ) : filteredDeliveries && filteredDeliveries.length > 0 ? (
+                filteredDeliveries.map((delivery: any, index: number) => (
                   <tr key={index} className="border-b hover:bg-slate-50">
                     <td className="px-6 py-4 font-semibold">#{delivery.ordernumber}</td>
-                    <td className="px-6 py-4">{delivery.clientname}</td>
+                    <td className="px-6 py-4">{delivery.clientname || "N/A"}</td>
                     <td className="px-6 py-4">
                       <Badge className={getStatusColor(delivery.status)}>{delivery.status}</Badge>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-slate-600">
+                      {delivery.deliveredat ? new Date(delivery.deliveredat).toLocaleDateString('pt-BR') : "Pendente"}
                     </td>
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan={3} className="px-6 py-8 text-center text-slate-500">Nenhuma entrega registrada</td></tr>
+                <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-500">
+                  {searchQuery ? "Nenhuma entrega encontrada com esse critério" : "Nenhuma entrega registrada"}
+                </td></tr>
               )}
             </tbody>
           </table>

@@ -1,401 +1,206 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import maplibregl, { LngLatBounds, Marker, Popup } from "maplibre-gl";
+import React, { useEffect, useRef, useState } from "react";
+import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { MapPin, Navigation, Truck } from "lucide-react";
 
-interface VehicleMapItem {
-  routeid: number;
+interface Vehicle {
+  id: number;
+  name: string;
+  plate: string;
+}
+
+interface Driver {
+  id: number;
+  name: string;
+}
+
+interface CurrentLocation {
+  latitude: number;
+  longitude: number;
+  timestamp: string;
+}
+
+interface Order {
+  id: number;
+  order_number: string;
+  address: string;
+  zipcode: string;
+  latitude?: number;
+  longitude?: number;
   status: string;
-  vehicle?: {
-    id?: number | null;
-    name?: string | null;
-    plate?: string | null;
-    type?: string | null;
-    capacity?: number | null;
-    status?: string | null;
-  };
-  driver?: {
-    id?: number | null;
-    name?: string | null;
-    phone?: string | null;
-  };
-  currentLocation: {
-    latitude: number;
-    longitude: number;
-    timestamp?: string;
-  };
-  destination?: {
-    address?: string | null;
-    number?: string | null;
-    district?: string | null;
-    city?: string | null;
-    state?: string | null;
-    zipcode?: string | null;
-    latitude?: number | null;
-    longitude?: number | null;
-  };
 }
 
-interface RouteLineFeature {
-  type: "Feature";
-  properties: {
-    routeid: number;
-  };
-  geometry: {
-    type: "LineString";
-    coordinates: [number, number][];
-  };
+interface RouteData {
+  route_id: number;
+  vehicle: Vehicle;
+  driver: Driver;
+  current_location: CurrentLocation;
+  orders: Order[];
 }
 
-const DEFAULT_CENTER: [number, number] = [-46.6333, -23.5505];
-
-function buildAddress(destination?: VehicleMapItem["destination"]) {
-  if (!destination) return "";
-
-  return [
-    destination.address,
-    destination.number,
-    destination.district,
-    destination.city,
-    destination.state,
-    destination.zipcode,
-    "Brasil",
-  ]
-    .filter(Boolean)
-    .join(", ");
-}
-
-async function geocodeDestination(item: VehicleMapItem): Promise<[number, number] | null> {
-  if (item.destination?.latitude && item.destination?.longitude) {
-    return [item.destination.longitude, item.destination.latitude];
-  }
-
-  const address = buildAddress(item.destination);
-  if (!address) return null;
-
-  try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`,
-      {
-        headers: {
-          Accept: "application/json",
-        },
-      }
-    );
-    const data = await response.json();
-    const firstResult = data?.[0];
-
-    if (!firstResult?.lat || !firstResult?.lon) return null;
-
-    const latitude = Number(firstResult.lat);
-    const longitude = Number(firstResult.lon);
-
-    api.put(`/routes/${item.routeid}`, {
-      deliverylatitude: latitude,
-      deliverylongitude: longitude,
-    }).catch((error) => {
-      console.warn("Não foi possível salvar coordenadas geocodificadas da rota", error);
-    });
-
-    return [longitude, latitude];
-  } catch (error) {
-    console.warn("Não foi possível geocodificar o destino da entrega", error);
-    return null;
-  }
-}
-
-async function getRouteLine(origin: [number, number], destination: [number, number]) {
-  try {
-    const response = await fetch(
-      `https://router.project-osrm.org/route/v1/driving/${origin[0]},${origin[1]};${destination[0]},${destination[1]}?overview=full&geometries=geojson`
-    );
-    const data = await response.json();
-    return data?.routes?.[0]?.geometry?.coordinates ?? [origin, destination];
-  } catch (error) {
-    console.warn("Não foi possível calcular a rota no mapa", error);
-    return [origin, destination];
-  }
-}
-
-function createVehicleMarkerElement() {
-  const element = document.createElement("div");
-  element.className = "vehicle-map-marker";
-  element.innerHTML = `
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M10 17h4V5H2v12h3" />
-      <path d="M20 17h2v-5l-3-5h-5v10h1" />
-      <circle cx="7.5" cy="17.5" r="2.5" />
-      <circle cx="17.5" cy="17.5" r="2.5" />
-    </svg>
-  `;
-  return element;
-}
-
-function createDestinationMarkerElement() {
-  const element = document.createElement("div");
-  element.className = "destination-map-marker";
-  element.innerHTML = `
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z" />
-      <circle cx="12" cy="10" r="3" />
-    </svg>
-  `;
-  return element;
-}
+const DEFAULT_CENTER: [number, number] = [-51.9253, -14.2350]; // Centro do Brasil
 
 export default function VehicleDashboardMap() {
-  const mapContainerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<maplibregl.Map | null>(null);
-  const markersRef = useRef<Marker[]>([]);
-  const [vehicles, setVehicles] = useState<VehicleMapItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<maplibregl.Map | null>(null);
+  const markersRef = useRef<maplibregl.Marker[]>([]);
+  const [vehicles, setVehicles] = useState<RouteData[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const activeVehicleCount = useMemo(() => vehicles.length, [vehicles]);
-
+  // Buscar dados do mapa
   useEffect(() => {
-    let isMounted = true;
-
-    async function loadVehicles() {
+    const fetchMapData = async () => {
       try {
         const response = await api.get("/dashboard/vehicle-map");
-        if (isMounted) {
-          setVehicles(response.data || []);
-          setLoadError(null);
-        }
+        setVehicles(response.data);
       } catch (error) {
-        console.error("Erro ao buscar veículos para o mapa", error);
-        if (isMounted) {
-          setVehicles([]);
-          setLoadError("Não foi possível carregar os veículos em rota no mapa.");
-        }
+        console.error("Erro ao buscar dados do mapa:", error);
       } finally {
-        if (isMounted) setIsLoading(false);
+        setLoading(false);
       }
-    }
-
-    loadVehicles();
-    const interval = window.setInterval(loadVehicles, 30000);
-
-    return () => {
-      isMounted = false;
-      window.clearInterval(interval);
     };
+
+    fetchMapData();
+    const interval = setInterval(fetchMapData, 10000); // Atualizar a cada 10 segundos
+
+    return () => clearInterval(interval);
   }, []);
 
+  // Inicializar mapa
   useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
+    if (!mapContainer.current) return;
 
-    mapRef.current = new maplibregl.Map({
-      container: mapContainerRef.current,
+    map.current = new maplibregl.Map({
+      container: mapContainer.current,
+      style: "https://demotiles.maplibre.org/style.json",
       center: DEFAULT_CENTER,
-      zoom: 10,
-      style: {
-        version: 8,
-        sources: {
-          osm: {
-            type: "raster",
-            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-            tileSize: 256,
-            attribution: "© OpenStreetMap contributors",
-          },
-        },
-        layers: [
-          {
-            id: "osm",
-            type: "raster",
-            source: "osm",
-          },
-        ],
-      },
+      zoom: 5,
     });
 
-    mapRef.current.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
-
     return () => {
-      markersRef.current.forEach((marker) => marker.remove());
-      markersRef.current = [];
-      mapRef.current?.remove();
-      mapRef.current = null;
+      map.current?.remove();
     };
   }, []);
 
+  // Atualizar marcadores quando os dados mudam
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    const currentMap = map;
+    const currentMap = map.current;
+    if (!currentMap || !currentMap.loaded()) return;
 
-    async function updateMap() {
-      markersRef.current.forEach((marker) => marker.remove());
-      markersRef.current = [];
+    // Limpar marcadores antigos
+    markersRef.current.forEach((marker) => marker.remove());
+    markersRef.current = [];
 
-      const routeFeatures: RouteLineFeature[] = [];
-      const bounds = new LngLatBounds();
+    vehicles.forEach((route) => {
+      const { current_location, vehicle, driver, orders } = route;
 
-      for (const item of vehicles) {
-        if (!item.currentLocation?.latitude || !item.currentLocation?.longitude) continue;
+      // Criar elemento do marcador do veículo
+      const vehicleMarkerElement = document.createElement("div");
+      vehicleMarkerElement.className = "vehicle-marker";
+      vehicleMarkerElement.innerHTML = `
+        <div class="vehicle-marker-icon">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="16" fill="#3b82f6"/>
+            <path d="M16 8L20 14H12L16 8Z" fill="white"/>
+            <path d="M12 14H20V22H12V14Z" fill="white"/>
+          </svg>
+        </div>
+      `;
 
-        const currentCoordinate: [number, number] = [
-          item.currentLocation.longitude,
-          item.currentLocation.latitude,
-        ];
-        const destinationCoordinate = await geocodeDestination(item);
-        const destinationAddress = buildAddress(item.destination) || "Destino não informado";
-        const vehicleName = item.vehicle?.name || "Veículo sem nome";
-        const vehiclePlate = item.vehicle?.plate || "Placa não informada";
-        const driverName = item.driver?.name || "Motorista não informado";
-        const lastUpdate = item.currentLocation.timestamp
-          ? new Date(item.currentLocation.timestamp).toLocaleString("pt-BR")
-          : "Sem horário informado";
+      // Criar popup do veículo
+      const vehiclePopup = new maplibregl.Popup({ offset: 25 }).setHTML(`
+        <div class="vehicle-popup">
+          <h3 class="font-bold text-sm">${vehicle.name}</h3>
+          <p class="text-xs text-gray-600">Placa: ${vehicle.plate}</p>
+          <p class="text-xs text-gray-600">Motorista: ${driver.name}</p>
+          <p class="text-xs text-gray-600">Entregas: ${orders.length}</p>
+        </div>
+      `);
 
-        const popup = new Popup({ offset: 18, closeButton: false }).setHTML(`
-          <div class="vehicle-map-popup">
-            <strong>${vehicleName}</strong>
-            <span>Placa: ${vehiclePlate}</span>
-            <span>Motorista: ${driverName}</span>
-            <span>Rota: #${item.routeid}</span>
-            <span>Destino: ${destinationAddress}</span>
-            <span>Última posição: ${lastUpdate}</span>
+      vehicleMarkerElement.addEventListener("mouseenter", () => {
+        vehiclePopup.addTo(currentMap);
+      });
+      vehicleMarkerElement.addEventListener("mouseleave", () => {
+        vehiclePopup.remove();
+      });
+
+      const vehicleMarker = new maplibregl.Marker({
+        element: vehicleMarkerElement,
+        anchor: "center",
+      })
+        .setLngLat([current_location.longitude, current_location.latitude])
+        .setPopup(vehiclePopup)
+        .addTo(currentMap);
+
+      markersRef.current.push(vehicleMarker);
+
+      // Adicionar marcadores de entrega
+      orders.forEach((order) => {
+        if (!order.latitude || !order.longitude) return;
+
+        const deliveryMarkerElement = document.createElement("div");
+        deliveryMarkerElement.className = "delivery-marker";
+        deliveryMarkerElement.innerHTML = `
+          <div class="delivery-marker-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="12" r="10" fill="#ef4444" stroke="white" stroke-width="2"/>
+              <text x="12" y="16" text-anchor="middle" fill="white" font-size="10" font-weight="bold">P</text>
+            </svg>
+          </div>
+        `;
+
+        const deliveryPopup = new maplibregl.Popup({ offset: 15 }).setHTML(`
+          <div class="delivery-popup">
+            <h4 class="font-bold text-sm">Pedido ${order.order_number}</h4>
+            <p class="text-xs text-gray-600">${order.address}</p>
+            <p class="text-xs text-gray-600">CEP: ${order.zipcode}</p>
+            <p class="text-xs text-gray-600">Status: ${order.status}</p>
           </div>
         `);
 
-        const markerElement = createVehicleMarkerElement();
-        markerElement.addEventListener("mouseenter", () => popup.addTo(currentMap));
-        markerElement.addEventListener("mouseleave", () => popup.remove());
+        deliveryMarkerElement.addEventListener("mouseenter", () => {
+          deliveryPopup.addTo(currentMap);
+        });
+        deliveryMarkerElement.addEventListener("mouseleave", () => {
+          deliveryPopup.remove();
+        });
 
-        const vehicleMarker = new Marker({ element: markerElement, anchor: "center" })
-          .setLngLat(currentCoordinate)
-          .setPopup(popup)
+        const deliveryMarker = new maplibregl.Marker({
+          element: deliveryMarkerElement,
+          anchor: "bottom",
+        })
+          .setLngLat([order.longitude, order.latitude])
+          .setPopup(deliveryPopup)
           .addTo(currentMap);
 
-        markersRef.current.push(vehicleMarker);
-        bounds.extend(currentCoordinate);
-
-        if (destinationCoordinate) {
-          const destinationPopup = new Popup({ offset: 16, closeButton: false }).setHTML(`
-            <div class="vehicle-map-popup">
-              <strong>Destino da rota #${item.routeid}</strong>
-              <span>${destinationAddress}</span>
-            </div>
-          `);
-          const destinationElement = createDestinationMarkerElement();
-          destinationElement.addEventListener("mouseenter", () => destinationPopup.addTo(currentMap));
-          destinationElement.addEventListener("mouseleave", () => destinationPopup.remove());
-
-          const destinationMarker = new Marker({ element: destinationElement, anchor: "bottom" })
-            .setLngLat(destinationCoordinate)
-            .setPopup(destinationPopup)
-            .addTo(currentMap);
-
-          markersRef.current.push(destinationMarker);
-          bounds.extend(destinationCoordinate);
-
-          const coordinates = await getRouteLine(currentCoordinate, destinationCoordinate);
-          routeFeatures.push({
-            type: "Feature",
-            properties: { routeid: item.routeid },
-            geometry: {
-              type: "LineString",
-              coordinates,
-            },
-          });
-        }
-      }
-
-      const applyRouteLayer = () => {
-        const source = currentMap.getSource("vehicle-route-lines") as maplibregl.GeoJSONSource | undefined;
-        const geojson = {
-          type: "FeatureCollection" as const,
-          features: routeFeatures,
-        };
-
-        if (source) {
-          source.setData(geojson);
-        } else {
-          currentMap.addSource("vehicle-route-lines", {
-            type: "geojson",
-            data: geojson,
-          });
-          currentMap.addLayer({
-            id: "vehicle-route-lines",
-            type: "line",
-            source: "vehicle-route-lines",
-            paint: {
-              "line-color": "#2563eb",
-              "line-width": 4,
-              "line-opacity": 0.75,
-            },
-          });
-        }
-      };
-
-      if (currentMap.loaded()) {
-        applyRouteLayer();
-      } else {
-        currentMap.once("load", applyRouteLayer);
-      }
-
-      if (!bounds.isEmpty()) {
-        currentMap.fitBounds(bounds, { padding: 70, maxZoom: 15, duration: 800 });
-      } else {
-        currentMap.setCenter(DEFAULT_CENTER);
-        currentMap.setZoom(10);
-      }
-    }
-
-    updateMap();
+        markersRef.current.push(deliveryMarker);
+      });
+    });
   }, [vehicles]);
 
-  return (
-    <Card className="overflow-hidden border-slate-200">
-      <div className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-blue-700">
-            <Navigation size={16} /> Mapa operacional
-          </div>
-          <h2 className="mt-2 text-2xl font-bold text-slate-900">Veículos em rota agora</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Acompanhe a posição atual dos veículos em entrega, o motorista responsável e a rota até o destino cadastrado.
-          </p>
+  if (loading) {
+    return (
+      <Card className="p-6 mb-6">
+        <div className="h-96 bg-gray-100 rounded-lg flex items-center justify-center">
+          <p className="text-gray-500">Carregando mapa...</p>
         </div>
-        <div className="flex items-center gap-3 rounded-xl bg-blue-50 px-4 py-3 text-blue-800">
-          <Truck size={22} />
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide">Em entrega</p>
-            <p className="text-2xl font-bold">{isLoading ? "--" : activeVehicleCount}</p>
-          </div>
-        </div>
-      </div>
+      </Card>
+    );
+  }
 
-      {loadError && (
-        <div className="mx-6 mb-4 rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
-          {loadError}
+  return (
+    <Card className="p-6 mb-6">
+      <h2 className="text-xl font-bold text-slate-900 mb-4">Rastreamento de Veículos</h2>
+      <div
+        ref={mapContainer}
+        className="w-full h-96 rounded-lg overflow-hidden border border-gray-200"
+      />
+      {vehicles.length === 0 && (
+        <div className="text-center py-8 text-gray-500">
+          <p>Nenhum veículo em rota no momento</p>
         </div>
       )}
-
-      <div className="relative h-[420px] w-full bg-slate-100">
-        {isLoading && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70">
-            <div className="w-full max-w-xl px-6">
-              <Skeleton className="h-8 w-64" />
-              <Skeleton className="mt-4 h-64 w-full" />
-            </div>
-          </div>
-        )}
-        {!isLoading && activeVehicleCount === 0 && (
-          <div className="absolute left-1/2 top-1/2 z-10 w-[90%] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-slate-200 bg-white/95 p-5 text-center shadow-lg">
-            <MapPin className="mx-auto text-slate-400" size={32} />
-            <h3 className="mt-3 font-semibold text-slate-900">Nenhum veículo em rota com GPS</h3>
-            <p className="mt-1 text-sm text-slate-600">
-              O mapa exibirá veículos quando houver rotas com status “Em Entrega” e registros em gps_tracking.
-            </p>
-          </div>
-        )}
-        <div ref={mapContainerRef} className="h-full w-full" />
-      </div>
     </Card>
   );
 }

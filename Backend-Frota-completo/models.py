@@ -35,14 +35,6 @@ class Route(Base):
     status = Column(String, default="pending")
     createdat = Column(DateTime(timezone=True), server_default=func.now())
     updatedat = Column(DateTime(timezone=True), onupdate=func.now())
-    deliveryaddress = Column(String)
-    deliverynumber = Column(String)
-    deliverydistrict = Column(String)
-    deliverycity = Column(String)
-    deliverystate = Column(String)
-    deliveryzipcode = Column(String)
-    deliverylatitude = Column(Float)
-    deliverylongitude = Column(Float)
 
     driver = relationship("Driver", back_populates="routes")
     vehicle = relationship("Vehicle", back_populates="routes")
@@ -58,6 +50,15 @@ class RouteItem(Base):
     ordernumber = Column(String)
     sequence = Column(Integer)
     status = Column(String, default="pending")
+    
+    # Novos campos para endereço e localização (snake_case)
+    address = Column(String)
+    neighborhood = Column(String)
+    city = Column(String)
+    state = Column(String)
+    zipcode = Column(String)
+    latitude = Column(Float)
+    longitude = Column(Float)
 
     route = relationship("Route", back_populates="items")
 

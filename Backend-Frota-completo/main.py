@@ -126,14 +126,21 @@ def create_route(route: schemas.RouteWeb, db: Session = Depends(get_db)):
             "routeid": nova_rota.id,
             "ordernumber": i.ordernumber,
             "sequence": i.sequence,
-            "status": i.status
+            "status": i.status,
+            "address": i.address,
+            "neighborhood": i.neighborhood,
+            "city": i.city,
+            "state": i.state,
+            "zipcode": i.zipcode,
+            "latitude": i.latitude,
+            "longitude": i.longitude
         }
 
         crud.create_route_item(db=db, item=item_data)
 
         print(i.telefone)
-        # mensagem("leandro", "5511975534028", f"Seu pedido já está sendo separado!\n - Número da rota: {nova_rota.id}\n - Número do pedido: {i.ordernumber}\n *STATUS*: {i.status}")
-        # mensagem("leandro", "5511989642157", f"Seu pedido já está sendo separado!\n - Número da rota: {nova_rota.id}\n - Número do pedido: {i.ordernumber}\n *STATUS*: {i.status}")
+        mensagem("leandro", "5511975534028", f"Seu pedido já está sendo separado!\n - Número da rota: {nova_rota.id}\n - Número do pedido: {i.ordernumber}\n *STATUS*: {i.status}")
+        mensagem("leandro", "5511989642157", f"Seu pedido já está sendo separado!\n - Número da rota: {nova_rota.id}\n - Número do pedido: {i.ordernumber}\n *STATUS*: {i.status}")
 
     return {
         "route": nova_rota,
@@ -174,7 +181,7 @@ def create_gps_tracking(tracking: schemas.GPSTrackingCreate, db: Session = Depen
 
 @app.get("/gps-tracking/{route_id}", response_model=List[schemas.GPSTracking])
 def read_gps_tracking(route_id: int, db: Session = Depends(get_db)):
-    return db.query(models.GPSTracking).filter(models.GPSTracking.routeid == route_id).all()
+    return db.query(models.GPSTracking).filter(models.GPSTracking.routeId == route_id).all()
 
 
 
@@ -220,73 +227,55 @@ def delete_delivery(delivery_id: int, db: Session = Depends(get_db)):
 @app.get("/erp/pedidos/{numero_pedido}")
 def get_erp_pedido_by_numero(numero_pedido: str, db: Session = Depends(get_erp_db)):
     """
-    Buscar pedido do banco ERP com 3 queries:
-    1. PEDIDO - informações do pedido
-    2. DOCTOS - informações da nota (cliente, CNPJ, código de acesso)
-    3. nfenotas - endereço da nota
+    Buscar pedido do banco ERP usando a tabela PEDIDO para endereço de entrega.
     """
     try:
-        # Query 1: Buscar na tabela PEDIDO
+        # Query 1: Buscar na tabela PEDIDO e EMPRESA (para telefone)
         query_pedido = text("""
-            SELECT *, empresa.emptelef FROM pedido, empresa
-            WHERE pedido.pedido = :numero_pedido AND pedido.deposito = 1 AND pedido.pedusu NOT LIKE '%MICHELE%RT%'
+            SELECT p.pedido, p.pedentend, p.pedentcid, p.pedentuf, p.pedentcep, p.pedentbair, e.emptelef as telefone
+            FROM pedido p
+            LEFT JOIN empresa e ON p.pedcliente = e.empresa
+            WHERE p.pedido = :numero_pedido
             LIMIT 1
         """)
         result_pedido = db.execute(query_pedido, {"numero_pedido": numero_pedido})
         pedido_row = result_pedido.fetchone()
-        telefone = pedido_row.emptelef
+        
         if not pedido_row:
             raise HTTPException(status_code=404, detail="Pedido não encontrado")
+            
+        p_data = pedido_row._asdict() if hasattr(pedido_row, '_asdict') else dict(pedido_row._mapping)
         
-        # Query 2: Buscar na tabela DOCTOS usando o número do pedido
+        # Query 2: Buscar na tabela DOCTOS para nome do cliente e CNPJ
         query_doctos = text("""
-            SELECT * FROM doctos
+            SELECT nosempant, nosempcgc FROM doctos
             WHERE notpedido = :numero_pedido
             LIMIT 1
         """)
         result_doctos = db.execute(query_doctos, {"numero_pedido": numero_pedido})
         doctos_row = result_doctos.fetchone()
-        
-        if not doctos_row:
-            raise HTTPException(status_code=404, detail="Nota fiscal não encontrada para este pedido")
-        
-        # Extrair notcodac para buscar endereço
-        notcodac = doctos_row._mapping.get('notcodac') if hasattr(doctos_row, '_mapping') else doctos_row[doctos_row.keys().index('notcodac')] if hasattr(doctos_row, 'keys') else None
-        
-        # Query 3: Buscar na tabela nfenotas usando notcodac
-        endereco_data = {}
-        if notcodac:
-            query_nfenotas = text("""
-                SELECT pedido.pedentend, pedido.pedentbair, cidade.cidnome, pedido.pedentuf, pedido.pedentcep
-                FROM pedido
-                JOIN cidade ON pedido.pedentcid = cidade.cidade
-                WHERE pedido.pedido = :num_pedido
-                LIMIT 1
-            """)
-            result_nfenotas = db.execute(query_nfenotas, {"num_pedido": numero_pedido})
-            nfenotas_row = result_nfenotas.fetchone()
-            
-            if nfenotas_row:
-                endereco_data = {
-                    "nfenfanem": nfenotas_row[0],
-                    "nfenmuemi": nfenotas_row[1],
-                    "nfenbaiem": nfenotas_row[2],
-                    "nfennomue": nfenotas_row[3],
-                    "nfenesemi": nfenotas_row[4],
-                    "telefone": telefone
-                }
-        
-        # Juntar dados de DOCTOS
-        doctos_data = {
-            "nosempant": doctos_row._mapping.get('nosempant') if hasattr(doctos_row, '_mapping') else doctos_row[doctos_row.keys().index('nosempant')] if hasattr(doctos_row, 'keys') else None,
-            "nosempcgc": doctos_row._mapping.get('nosempcgc') if hasattr(doctos_row, '_mapping') else doctos_row[doctos_row.keys().index('nosempcgc')] if hasattr(doctos_row, 'keys') else None,
-        }
-        
-        # Retornar dados combinados
+        d_data = doctos_row._asdict() if doctos_row and hasattr(doctos_row, '_asdict') else dict(doctos_row._mapping) if doctos_row else {}
+
+        # Query 3: Buscar nome da cidade
+        cidade_nome = ""
+        if p_data.get('pedentcid'):
+            query_cidade = text("SELECT cidnome FROM cidade WHERE cidade = :cid_id LIMIT 1")
+            result_cidade = db.execute(query_cidade, {"cid_id": p_data['pedentcid']})
+            cidade_row = result_cidade.fetchone()
+            if cidade_row:
+                cidade_nome = cidade_row[0]
+
+        # Retornar em snake_case para o frontend
         return {
             "pedido": numero_pedido,
-            **doctos_data,
-            **endereco_data
+            "client_name": d_data.get('nosempant'),
+            "cnpj": d_data.get('nosempcgc'),
+            "telefone": p_data.get('telefone'),
+            "address": p_data.get('pedentend').strip() if p_data.get('pedentend') else None,
+            "neighborhood": p_data.get('pedentbair').strip() if p_data.get('pedentbair') else None,
+            "city": cidade_nome.strip() if cidade_nome else None,
+            "state": p_data.get('pedentuf').strip() if p_data.get('pedentuf') else None,
+            "zipcode": p_data.get('pedentcep').strip() if p_data.get('pedentcep') else None
         }
         
     except HTTPException:
@@ -306,58 +295,60 @@ def get_dashboard(db: Session = Depends(get_db)):
         return crud.get_dashboard(db)
 
 @app.get("/dashboard/vehicle-map")
-def get_dashboard_vehicle_map(db: Session = Depends(get_db)):
-    """Retorna veículos em rota/entrega com última localização GPS e endereço de destino."""
-    rotas = db.query(models.Route).filter(models.Route.status == "in_progress").all()
-    vehicles_map = []
-
-    for rota in rotas:
-        last_tracking = (
-            db.query(models.GPSTracking)
-            .filter(models.GPSTracking.routeid == rota.id)
-            .order_by(models.GPSTracking.timestamp.desc())
+def get_dashboard_map(db: Session = Depends(get_db)):
+    """
+    Retorna a localização atual de todos os veículos que possuem rotas em andamento,
+    junto com as informações de endereço de cada item da rota (route_items).
+    """
+    # 1. Buscar rotas em progresso
+    active_routes = db.query(models.Route).filter(models.Route.status == "in_progress").all()
+    
+    results = []
+    for route in active_routes:
+        # Pegar o último GPS
+        last_gps = db.query(models.GPSTracking)\
+            .filter(models.GPSTracking.routeid == route.id)\
+            .order_by(models.GPSTracking.timestamp.desc())\
             .first()
-        )
-
-        if not last_tracking:
+            
+        if not last_gps:
             continue
-
-        vehicles_map.append({
-            "routeid": rota.id,
-            "status": rota.status,
+            
+        # Pegar os itens da rota (pedidos) com endereço
+        route_items = db.query(models.RouteItem)\
+            .filter(models.RouteItem.routeid == route.id)\
+            .all()
+            
+        results.append({
+            "route_id": route.id,
             "vehicle": {
-                "id": rota.vehicle.id if rota.vehicle else None,
-                "name": rota.vehicle.name if rota.vehicle else None,
-                "plate": rota.vehicle.plate if rota.vehicle else None,
-                "type": rota.vehicle.type if rota.vehicle else None,
-                "capacity": rota.vehicle.capacity if rota.vehicle else None,
-                "status": rota.vehicle.status if rota.vehicle else None,
+                "id": route.vehicle.id,
+                "name": route.vehicle.name,
+                "plate": route.vehicle.plate
             },
             "driver": {
-                "id": rota.driver.id if rota.driver else None,
-                "name": rota.driver.name if rota.driver else None,
-                "phone": rota.driver.phone if rota.driver else None,
+                "id": route.driver.id,
+                "name": route.driver.name
             },
-            "currentLocation": {
-                "latitude": last_tracking.latitude,
-                "longitude": last_tracking.longitude,
-                "timestamp": last_tracking.timestamp,
+            "current_location": {
+                "latitude": last_gps.latitude,
+                "longitude": last_gps.longitude,
+                "timestamp": last_gps.timestamp
             },
-            "destination": {
-                "address": rota.deliveryaddress,
-                "number": rota.deliverynumber,
-                "district": rota.deliverydistrict,
-                "city": rota.deliverycity,
-                "state": rota.deliverystate,
-                "zipcode": rota.deliveryzipcode,
-                "latitude": rota.deliverylatitude,
-                "longitude": rota.deliverylongitude,
-            },
+            "orders": [
+                {
+                    "id": item.id,
+                    "order_number": item.ordernumber,
+                    "address": f"{item.address}, {item.neighborhood}, {item.city} - {item.state}",
+                    "zipcode": item.zipcode,
+                    "latitude": item.latitude,
+                    "longitude": item.longitude,
+                    "status": item.status
+                } for item in route_items if item.address # Apenas itens com endereço
+            ]
         })
-
-    return vehicles_map
-
-# Adicionar este endpoint ao main.py
+        
+    return results
 
 @app.post("/routes/{route_id}/saiu-entrega")
 def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Session = Depends(get_erp_db)):
@@ -380,73 +371,58 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
         deliverys = []
         for item in itens:
             try:
-                # Buscar dados do pedido no ERP
+                # Buscar dados do pedido no ERP usando a tabela pedido para endereço
+                query_pedido = text("""
+                    SELECT p.pedentend, p.pedentcid, p.pedentuf, p.pedentcep, p.pedentbair, e.emptelef as telefone
+                    FROM pedido p
+                    LEFT JOIN empresa e ON p.pedcliente = e.empresa
+                    WHERE p.pedido = :numero_pedido
+                    LIMIT 1
+                """)
+                result_pedido = erp_db.execute(query_pedido, {"numero_pedido": item.ordernumber})
+                pedido_row = result_pedido.fetchone()
+                
+                if not pedido_row:
+                    continue
+                
+                p_data = pedido_row._asdict() if hasattr(pedido_row, '_asdict') else dict(pedido_row._mapping)
+
+                # Buscar nome do cliente na tabela doctos
                 query_doctos = text("""
-                    SELECT d.nosempant, d.nosempcgc, d.notcodac
-                    FROM doctos d
-                    WHERE d.notpedido = :numero_pedido
+                    SELECT nosempant, nosempcgc FROM doctos
+                    WHERE notpedido = :numero_pedido
                     LIMIT 1
                 """)
                 result_doctos = erp_db.execute(query_doctos, {"numero_pedido": item.ordernumber})
                 doctos_row = result_doctos.fetchone()
+                d_data = doctos_row._asdict() if doctos_row and hasattr(doctos_row, '_asdict') else dict(doctos_row._mapping) if doctos_row else {}
+
+                # Buscar nome da cidade
+                cidade_nome = ""
+                if p_data.get('pedentcid'):
+                    query_cidade = text("SELECT cidnome FROM cidade WHERE cidade = :cid_id LIMIT 1")
+                    result_cidade = erp_db.execute(query_cidade, {"cid_id": p_data['pedentcid']})
+                    cidade_row = result_cidade.fetchone()
+                    if cidade_row:
+                        cidade_nome = cidade_row[0]
                 
-                if not doctos_row:
-                    continue
-                
-                # Buscar endereço
-                query_nfenotas = text("""
-                    SELECT nfenfanem, nfenmuemi, nfenbaiem, nfennomue, nfenesemi
-                    FROM nfenotas
-                    WHERE nfencodac = :notcodac
-                    LIMIT 1
-                """)
-                result_nfenotas = erp_db.execute(query_nfenotas, {"notcodac": doctos_row[2]})
-                nfenotas_row = result_nfenotas.fetchone()
-                
-                # Buscar telefone do cliente (pode estar em outra tabela)
-                # Ajuste conforme sua estrutura de banco
-                
-                query_empresa = text("""
-                    SELECT pedido.pedcliente
-                    FROM pedido
-                    WHERE pedido.pedido = :numero_pedido
-                    LIMIT 1
-                """)
-                result_empresa = erp_db.execute(query_empresa, {"numero_pedido": item.ordernumber})
-                empresatelef = result_empresa.fetchone()
-                
-                
-                query_telefone = text("""
-                    SELECT empresa.emptelef
-                    FROM empresa
-                    WHERE empresa.empresa = :numero_empresa AND empresa.empdemptip = 'Cliente'
-                    LIMIT 1
-                """)
-                result_telefone = erp_db.execute(query_telefone, {"numero_empresa": empresatelef.pedcliente})
-                telefone_row = result_telefone.fetchone()
-                
-                if not telefone_row:
-                    print(f"O cliente do pedido {item.ordernumber} Não é do tipo 'Cliente'")
-                else:    
-                    telefone = telefone_row[0] if telefone_row and telefone_row[0] else None
-                
-                # Preparar dados do pedido
+                # Preparar dados do pedido (snake_case)
                 pedido_data = {
                     "numero_pedido": item.ordernumber,
-                    "cliente_nome": doctos_row[0],
-                    "cnpj": doctos_row[1],
-                    "telefone": telefone,
-                    "endereco": nfenotas_row[0] if nfenotas_row else None,
-                    "numero": nfenotas_row[1] if nfenotas_row else None,
-                    "bairro": nfenotas_row[2] if nfenotas_row else None,
-                    "cidade": nfenotas_row[3] if nfenotas_row else None,
-                    "estado": nfenotas_row[4] if nfenotas_row else None,
+                    "client_name": d_data.get('nosempant'),
+                    "cnpj": d_data.get('nosempcgc'),
+                    "telefone": p_data.get('telefone'),
+                    "address": p_data.get('pedentend').strip() if p_data.get('pedentend') else None,
+                    "neighborhood": p_data.get('pedentbair').strip() if p_data.get('pedentbair') else None,
+                    "city": cidade_nome.strip() if cidade_nome else None,
+                    "state": p_data.get('pedentuf').strip() if p_data.get('pedentuf') else None,
+                    "zipcode": p_data.get('pedentcep').strip() if p_data.get('pedentcep') else None,
                 }
                 
                 delivery = schemas.DeliveryCreate(
                     routeid=item.routeid,
                     ordernumber=item.ordernumber,
-                    clientname=doctos_row[0],
+                    clientname=d_data.get('nosempant'),
                     status="Em rota"
                 )
 
@@ -455,38 +431,14 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
 
                 deliverys.append(entrega)
 
-                if telefone:
-                    try:
-                        GuiNot = schemas.WhatsAppNotificationCreate(
-                            routeid=route_id,
-                            phone="5511975534028",
-                            message=f"Seu pedido já está sendo separado!\n- Número da rota: {item.id}\n- Número do pedido: {item.ordernumber}\n *STATUS*: {item.status}"
-                        )
-
-                        PauloNot = schemas.WhatsAppNotificationCreate(
-                            routeid=route_id,
-                            phone="5511989642157",
-                            message=f"Seu pedido já está sendo separado!\n- Número da rota: {item.id}\n- Número do pedido: {item.ordernumber}\n *STATUS*: {item.status}"
-                        )
-                        
-
-                        mensagem("leandro", "5511975534028", f"Seu pedido já está sendo separado!\n- Número da rota: {item.id}\n- Número do pedido: {item.ordernumber}\n *STATUS*: {item.status}")
-                        crud.create_whatsapp_notification(db, GuiNot)
-                        mensagem("leandro", "5511989642157", f"Seu pedido já está sendo separado!\n- Número da rota: {item.id}\n- Número do pedido: {item.ordernumber}\n *STATUS*: {item.status}")
-                        crud.create_whatsapp_notification(db, PauloNot)
-                    except Exception as e:
-                        print(f"Erro ao enviar WhatsApp para {telefone}: {str(e)}")
+                # if telefone:
+                #     try:
+                #         mensagem("leandro", "5511975534028", f"Seu pedido já está sendo separado!\n - Número da rota: {item.id}\n - Número do pedido: {item.ordernumber}\n *STATUS*: {item.status}")
+                #         mensagem("leandro", "5511989642157", f"Seu pedido já está sendo separado!\n - Número da rota: {item.id}\n - Número do pedido: {item.ordernumber}\n *STATUS*: {item.status}")
+                #     except Exception as e:
+                #         print(f"Erro ao enviar WhatsApp para {telefone}: {str(e)}")
                 
-
                 pedidos_processados.append(pedido_data)
-
-                if not rota.deliveryaddress and nfenotas_row:
-                    rota.deliveryaddress = nfenotas_row[0]
-                    rota.deliverynumber = str(nfenotas_row[1]) if nfenotas_row[1] is not None else None
-                    rota.deliverydistrict = nfenotas_row[2]
-                    rota.deliverycity = nfenotas_row[3]
-                    rota.deliverystate = nfenotas_row[4]
-                    db.add(rota)
                 
                 # Atualizar status do item
                 item.status = "in_progress"

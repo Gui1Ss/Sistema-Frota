@@ -1,4 +1,3 @@
-@import "tailwindcss";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
@@ -174,59 +173,63 @@
       max-width: 1280px; /* Standard content width */
     }
   }
-}
 
-.vehicle-map-marker {
-  align-items: center;
-  background: #2563eb;
-  border: 3px solid #ffffff;
-  border-radius: 9999px;
-  box-shadow: 0 10px 25px rgb(15 23 42 / 35%);
-  color: #ffffff;
-  display: flex;
-  height: 44px;
-  justify-content: center;
-  width: 44px;
-}
+  /* MapLibre Marker Styles */
+  .vehicle-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
 
-.destination-map-marker {
-  align-items: center;
-  background: #16a34a;
-  border: 3px solid #ffffff;
-  border-radius: 9999px 9999px 9999px 0;
-  box-shadow: 0 8px 20px rgb(15 23 42 / 25%);
-  color: #ffffff;
-  display: flex;
-  height: 34px;
-  justify-content: center;
-  transform: rotate(-45deg);
-  width: 34px;
-}
+  .vehicle-marker-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease;
+  }
 
-.destination-map-marker svg {
-  transform: rotate(45deg);
-}
+  .vehicle-marker:hover .vehicle-marker-icon {
+    transform: scale(1.1);
+  }
 
-.vehicle-map-popup {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 220px;
-  color: #0f172a;
-}
+  .delivery-marker {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    cursor: pointer;
+  }
 
-.vehicle-map-popup strong {
-  color: #1d4ed8;
-  font-size: 14px;
-}
+  .delivery-marker-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease;
+  }
 
-.vehicle-map-popup span {
-  font-size: 12px;
-  line-height: 1.35;
-}
+  .delivery-marker:hover .delivery-marker-icon {
+    transform: scale(1.15);
+  }
 
-.maplibregl-popup-content {
-  border-radius: 12px;
-  box-shadow: 0 15px 35px rgb(15 23 42 / 20%);
-  padding: 12px;
+  /* MapLibre Popup Styles */
+  .vehicle-popup,
+  .delivery-popup {
+    padding: 8px;
+    font-size: 12px;
+  }
+
+  .vehicle-popup h3,
+  .delivery-popup h4 {
+    margin: 0 0 4px 0;
+    font-weight: 600;
+  }
+
+  .vehicle-popup p,
+  .delivery-popup p {
+    margin: 2px 0;
+  }
 }

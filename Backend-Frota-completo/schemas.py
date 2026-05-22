@@ -55,14 +55,6 @@ class RouteBase(BaseModel):
     driverid: Optional[int] = None
     vehicleid: Optional[int] = None
     status: Optional[str] = "pending"
-    deliveryaddress: Optional[str] = None
-    deliverynumber: Optional[str] = None
-    deliverydistrict: Optional[str] = None
-    deliverycity: Optional[str] = None
-    deliverystate: Optional[str] = None
-    deliveryzipcode: Optional[str] = None
-    deliverylatitude: Optional[float] = None
-    deliverylongitude: Optional[float] = None
 
 class RouteCreate(RouteBase):
     pass
@@ -71,14 +63,6 @@ class RouteUpdate(BaseModel):
     driverid: Optional[int] = None
     vehicleid: Optional[int] = None
     status: Optional[str] = None
-    deliveryaddress: Optional[str] = None
-    deliverynumber: Optional[str] = None
-    deliverydistrict: Optional[str] = None
-    deliverycity: Optional[str] = None
-    deliverystate: Optional[str] = None
-    deliveryzipcode: Optional[str] = None
-    deliverylatitude: Optional[float] = None
-    deliverylongitude: Optional[float] = None
 
 class Route(RouteBase):
     id: int
@@ -96,17 +80,38 @@ class RouteItemBase(BaseModel):
     ordernumber: Optional[str] = None
     sequence: Optional[int] = None
     status: Optional[str] = "pending"
+    address: Optional[str] = None
+    neighborhood: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zipcode: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 class RouteItemCreate(BaseModel):
     ordernumber: Optional[str] = None
     sequence: Optional[int] = None
     status: Optional[str] = "pending"
+    address: Optional[str] = None
+    neighborhood: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zipcode: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 class RouteItemCreateWeb(BaseModel):
     ordernumber: Optional[str] = None
     sequence: Optional[int] = None
     status: Optional[str] = "pending"
     telefone: str
+    address: Optional[str] = None
+    neighborhood: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zipcode: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 class RouteWeb(BaseModel):
     items: list[RouteItemCreateWeb]
@@ -141,7 +146,7 @@ class WhatsAppNotificationBase(BaseModel):
     routeid: int
     phone: str
     message: str
-    status: Optional[str] = "enviado"
+    status: Optional[str] = "sent"
 
 class WhatsAppNotificationCreate(WhatsAppNotificationBase):
     pass

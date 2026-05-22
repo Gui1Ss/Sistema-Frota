@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import MainLayout from "@/components/MainLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,10 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, Trash2, Check, Truck, AlertCircle } from "lucide-react";
+import { Plus, Search, Trash2, Check, Truck, AlertCircle, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +30,9 @@ export default function RotaPage() {
   const [pedidosBuscados, setPedidosBuscados] = useState<any[]>([]);
   const [searchingPedido, setSearchingPedido] = useState(false);
   const [confirmSaidaRotaId, setConfirmSaidaRotaId] = useState<number | null>(null);
+  const [searchRouteQuery, setSearchRouteQuery] = useState("");
+  const [selectedRouteForDetails, setSelectedRouteForDetails] = useState<number | null>(null);
+  const [routeDetailsOpen, setRouteDetailsOpen] = useState(false);
 
   // Buscar motoristas
   const { data: drivers, isLoading: driversLoading } = useQuery({
@@ -74,6 +77,22 @@ export default function RotaPage() {
         return [];
       }
     }
+  });
+
+  // Buscar itens de uma rota específica
+  const { data: routeItems } = useQuery({
+    queryKey: ['route-items', selectedRouteForDetails],
+    queryFn: async () => {
+      if (!selectedRouteForDetails) return [];
+      try {
+        const response = await api.get('/route-items/');
+        return response.data.filter((item: any) => item.routeid === selectedRouteForDetails) || [];
+      } catch (error) {
+        console.error("Erro ao buscar itens da rota:", error);
+        return [];
+      }
+    },
+    enabled: !!selectedRouteForDetails
   });
 
   // Criar rota
@@ -176,36 +195,22 @@ export default function RotaPage() {
       return;
     }
 
-    const primeiroPedido = pedidosBuscados[0];
-
     const routeData = {
       items: pedidosBuscados.map((p, index) => ({
         ordernumber: p.pedido,
         sequence: index + 1,
         status: "pending",
-        telefone: p.telefone
+        telefone: p.telefone,
+        address: p.address,
+        neighborhood: p.neighborhood,
+        city: p.city,
+        state: p.state,
+        zipcode: p.zipcode
       })),
       route: {
         driverid: parseInt(selectedDriver),
         vehicleid: parseInt(selectedVehicle),
-        status: "pending",
-        deliveryaddress: primeiroPedido?.nfenfanem || null,
-        deliverycity: String(primeiroPedido?.nfenmuemi) || null,
-        deliverydistrict: primeiroPedido?.nfenbaiem || null,
-        deliverystate: primeiroPedido?.nfennomue || null,
-        deliveryzipcode: primeiroPedido?.cep || primeiroPedido?.nfencepem || null
-
-    //     "pedido": "16719",
-    // "nosempant": "BRUNA CUNHA DE MELLO                    ",
-    // "nosempcgc": "756.284.571-91    ",
-    // "nfenfanem": "RUA PRESIDENTE PRUDENTE SN QD2 LT 07                        ",
-    // "nfenmuemi": "GUANABARA           ",
-    // "nfenbaiem": "JUSSARA                       ",
-    // "nfennomue": "PR",
-    // "nfenesemi": "76270-000",
-    // "telefone": "(71) 9381-4027"
-
-
+        status: "pending"
       }
     };
 
@@ -216,6 +221,16 @@ export default function RotaPage() {
   const handleConfirmSaida = (routeId: number) => {
     setConfirmSaidaRotaId(routeId);
   };
+
+  // Filtrar rotas por busca
+  const filteredRotas = rotas?.filter((rota: any) => {
+    const searchLower = searchRouteQuery.toLowerCase();
+    return (
+      rota.id.toString().includes(searchLower) ||
+      (drivers?.find((d: any) => d.id === rota.driverid)?.name || "").toLowerCase().includes(searchLower) ||
+      (vehicles?.find((v: any) => v.id === rota.vehicleid)?.plate || "").toLowerCase().includes(searchLower)
+    );
+  }) || [];
 
   return (
     <MainLayout>
@@ -308,13 +323,13 @@ export default function RotaPage() {
                       >
                         <div className="flex-1">
                           <div className="font-semibold text-sm">
-                            #{pedido.pedido} - {pedido.nosempant}
+                            #{pedido.pedido} - {pedido.client_name}
                           </div>
                           <div className="text-xs text-slate-600">
-                            {pedido.nfenfanem}, {pedido.nfenbaiem}, {pedido.nfenesemi} {pedido.nfenmuemi} - {pedido.nfennomue}  
+                            {pedido.address}, {pedido.neighborhood} - {pedido.city}, {pedido.state}
                           </div>
                           <div className="text-xs text-slate-500 mt-1">
-                            CNPJ: {pedido.nosempcgc} | Sequência: {pedido.sequencia}
+                            CEP: {pedido.zipcode} | Sequência: {pedido.sequencia}
                           </div>
                         </div>
                         <Button
@@ -382,6 +397,52 @@ export default function RotaPage() {
           </AlertDialogContent>
         </AlertDialog>
 
+        {/* Dialog para visualizar detalhes da rota */}
+        <Dialog open={routeDetailsOpen} onOpenChange={setRouteDetailsOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Pedidos da Rota #{selectedRouteForDetails}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              {routeItems && routeItems.length > 0 ? (
+                routeItems.map((item: any) => (
+                  <div key={item.id} className="p-4 border rounded-lg bg-slate-50">
+                    <div className="font-semibold text-sm">Pedido #{item.ordernumber}</div>
+                    {item.address && (
+                      <div className="text-sm text-slate-600 mt-2">
+                        <p><strong>Endereço:</strong> {item.address}</p>
+                        <p><strong>Bairro:</strong> {item.neighborhood}</p>
+                        <p><strong>Cidade:</strong> {item.city} - {item.state}</p>
+                        <p><strong>CEP:</strong> {item.zipcode}</p>
+                      </div>
+                    )}
+                    <div className="text-xs text-slate-500 mt-2">
+                      Status: <span className="font-semibold">{item.status}</span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-slate-500 text-center py-4">Nenhum pedido encontrado para esta rota</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Barra de busca */}
+        <Card className="p-4">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Buscar por ID da rota, motorista ou placa do veículo..."
+              value={searchRouteQuery}
+              onChange={(e) => setSearchRouteQuery(e.target.value)}
+              className="flex-1"
+            />
+            <Button variant="outline" size="sm">
+              <Search size={16} />
+            </Button>
+          </div>
+        </Card>
+
         {/* Tabela de Rotas */}
         <Card className="overflow-hidden">
           <table className="w-full">
@@ -390,8 +451,8 @@ export default function RotaPage() {
                 <th className="px-6 py-3 text-left">ID</th>
                 <th className="px-6 py-3 text-left">Motorista</th>
                 <th className="px-6 py-3 text-left">Veículo</th>
+                <th className="px-6 py-3 text-left">Endereços</th>
                 <th className="px-6 py-3 text-left">Status</th>
-                <th className="px-6 py-3 text-left">Destino</th>
                 <th className="px-6 py-3 text-left">Criada em</th>
                 <th className="px-6 py-3 text-left">Ações</th>
               </tr>
@@ -403,46 +464,53 @@ export default function RotaPage() {
                     <Skeleton className="h-4 w-full" />
                   </td>
                 </tr>
-              ) : rotas && rotas.length > 0 ? (
-                rotas.map((rota: any) => {
+              ) : filteredRotas && filteredRotas.length > 0 ? (
+                filteredRotas.map((rota: any) => {
                   const driver = drivers?.find((d: any) => d.id === rota.driverid);
                   const vehicle = vehicles?.find((v: any) => v.id === rota.vehicleid);
-                  const isPending = rota.status === "pending";
-                  
+                  const statusColor = 
+                    rota.status === "pending" ? "bg-yellow-100 text-yellow-800" :
+                    rota.status === "in_progress" ? "bg-blue-100 text-blue-800" :
+                    rota.status === "completed" ? "bg-green-100 text-green-800" :
+                    "bg-gray-100 text-gray-800";
+
                   return (
                     <tr key={rota.id} className="border-b hover:bg-slate-50">
                       <td className="px-6 py-4 font-semibold">#{rota.id}</td>
-                      <td className="px-6 py-4">{driver?.name || driver?.nome || "Desconhecido"}</td>
-                      <td className="px-6 py-4">{vehicle?.plate || vehicle?.placa || "Desconhecido"}</td>
+                      <td className="px-6 py-4">{driver?.name || "N/A"}</td>
+                      <td className="px-6 py-4">{vehicle?.plate || "N/A"}</td>
                       <td className="px-6 py-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          rota.status === "pending" ? "bg-yellow-100 text-yellow-800" :
-                          rota.status === "in_progress" ? "bg-blue-100 text-blue-800" :
-                          rota.status === "completed" ? "bg-green-100 text-green-800" :
-                          "bg-slate-100 text-slate-800"
-                        }`}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedRouteForDetails(rota.id);
+                            setRouteDetailsOpen(true);
+                          }}
+                          className="gap-1"
+                        >
+                          <Eye size={14} /> Ver Pedidos
+                        </Button>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor}`}>
                           {rota.status === "pending" ? "Pendente" :
-                           rota.status === "in_progress" ? "Em Entrega" :
+                           rota.status === "in_progress" ? "Em Andamento" :
                            rota.status === "completed" ? "Concluída" :
                            rota.status}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-600">
-                        {[rota.deliveryaddress, rota.deliverycity, rota.deliverystate].filter(Boolean).join(", ") || "Não informado"}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-600">
-                        {new Date(rota.createdat).toLocaleDateString("pt-BR")}
+                        {new Date(rota.createdat).toLocaleDateString('pt-BR')}
                       </td>
                       <td className="px-6 py-4">
-                        {isPending && (
+                        {rota.status === "pending" && (
                           <Button
-                            onClick={() => handleConfirmSaida(rota.id)}
-                            disabled={saidaEntregaMutation.isPending}
-                            className="gap-2 bg-green-600 hover:bg-green-700"
                             size="sm"
+                            onClick={() => handleConfirmSaida(rota.id)}
+                            className="bg-green-600 hover:bg-green-700 gap-1"
                           >
-                            <Truck size={16} />
-                            Saiu para Entrega
+                            <Check size={14} /> Saiu para Entrega
                           </Button>
                         )}
                       </td>
@@ -451,7 +519,7 @@ export default function RotaPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-slate-600">
+                  <td colSpan={7} className="px-6 py-4 text-center text-slate-500">
                     Nenhuma rota encontrada
                   </td>
                 </tr>

@@ -101,43 +101,19 @@ export interface RouteFormData {
   motorista_id: number;
   veiculo_id: number;
   status?: string;
-  deliveryaddress?: string | null;
-  deliverynumber?: string | null;
-  deliverydistrict?: string | null;
-  deliverycity?: string | null;
-  deliverystate?: string | null;
-  deliveryzipcode?: string | null;
-  deliverylatitude?: number | null;
-  deliverylongitude?: number | null;
 }
 
 export interface RouteApiPayload {
   driverId: number;
   vehicleId: number;
   status?: string;
-  deliveryaddress?: string | null;
-  deliverynumber?: string | null;
-  deliverydistrict?: string | null;
-  deliverycity?: string | null;
-  deliverystate?: string | null;
-  deliveryzipcode?: string | null;
-  deliverylatitude?: number | null;
-  deliverylongitude?: number | null;
 }
 
 export const transformRouteToApi = (formData: RouteFormData): RouteApiPayload => {
   return {
     driverId: formData.motorista_id,
     vehicleId: formData.veiculo_id,
-    status: formData.status || "pending",
-    deliveryaddress: formData.deliveryaddress,
-    deliverynumber: formData.deliverynumber,
-    deliverydistrict: formData.deliverydistrict,
-    deliverycity: formData.deliverycity,
-    deliverystate: formData.deliverystate,
-    deliveryzipcode: formData.deliveryzipcode,
-    deliverylatitude: formData.deliverylatitude,
-    deliverylongitude: formData.deliverylongitude
+    status: formData.status || "pending"
   };
 };
 
@@ -145,15 +121,7 @@ export const transformRouteFromApi = (apiData: any): RouteFormData => {
   return {
     motorista_id: apiData.driverId,
     veiculo_id: apiData.vehicleId,
-    status: apiData.status,
-    deliveryaddress: apiData.deliveryaddress,
-    deliverynumber: apiData.deliverynumber,
-    deliverydistrict: apiData.deliverydistrict,
-    deliverycity: apiData.deliverycity,
-    deliverystate: apiData.deliverystate,
-    deliveryzipcode: apiData.deliveryzipcode,
-    deliverylatitude: apiData.deliverylatitude,
-    deliverylongitude: apiData.deliverylongitude
+    status: apiData.status
   };
 };
 
