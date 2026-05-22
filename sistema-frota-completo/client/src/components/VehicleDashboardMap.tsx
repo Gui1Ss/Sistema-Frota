@@ -47,6 +47,7 @@ export default function VehicleDashboardMap() {
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const [vehicles, setVehicles] = useState<RouteData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mapLoaded, setMapLoaded] = useState(false);
 
   // Buscar dados do mapa
   useEffect(() => {
@@ -69,136 +70,143 @@ export default function VehicleDashboardMap() {
 
   // Inicializar mapa
   useEffect(() => {
-    if (!mapContainer.current) return;
+    if (!mapContainer.current || map.current) return;
 
     map.current = new maplibregl.Map({
       container: mapContainer.current,
       style: "https://demotiles.maplibre.org/style.json",
       center: DEFAULT_CENTER,
-      zoom: 5,
+      zoom: 4,
+    } );
+
+    map.current.on('load', () => {
+      setMapLoaded(true);
     });
 
     return () => {
       map.current?.remove();
+      map.current = null;
     };
   }, []);
 
-  // Atualizar marcadores quando os dados mudam
+  // Atualizar marcadores quando os dados mudam ou o mapa carrega
   useEffect(() => {
     const currentMap = map.current;
-    if (!currentMap || !currentMap.loaded()) return;
+    if (!currentMap || !mapLoaded) return;
 
     // Limpar marcadores antigos
     markersRef.current.forEach((marker) => marker.remove());
     markersRef.current = [];
 
+    const bounds = new maplibregl.LngLatBounds();
+    let hasCoords = false;
+
     vehicles.forEach((route) => {
       const { current_location, vehicle, driver, orders } = route;
 
-      // Criar elemento do marcador do veículo
-      const vehicleMarkerElement = document.createElement("div");
-      vehicleMarkerElement.className = "vehicle-marker";
-      vehicleMarkerElement.innerHTML = `
-        <div class="vehicle-marker-icon">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="16" fill="#3b82f6"/>
-            <path d="M16 8L20 14H12L16 8Z" fill="white"/>
-            <path d="M12 14H20V22H12V14Z" fill="white"/>
-          </svg>
-        </div>
-      `;
-
-      // Criar popup do veículo
-      const vehiclePopup = new maplibregl.Popup({ offset: 25 }).setHTML(`
-        <div class="vehicle-popup">
-          <h3 class="font-bold text-sm">${vehicle.name}</h3>
-          <p class="text-xs text-gray-600">Placa: ${vehicle.plate}</p>
-          <p class="text-xs text-gray-600">Motorista: ${driver.name}</p>
-          <p class="text-xs text-gray-600">Entregas: ${orders.length}</p>
-        </div>
-      `);
-
-      vehicleMarkerElement.addEventListener("mouseenter", () => {
-        vehiclePopup.addTo(currentMap);
-      });
-      vehicleMarkerElement.addEventListener("mouseleave", () => {
-        vehiclePopup.remove();
-      });
-
-      const vehicleMarker = new maplibregl.Marker({
-        element: vehicleMarkerElement,
-        anchor: "center",
-      })
-        .setLngLat([current_location.longitude, current_location.latitude])
-        .setPopup(vehiclePopup)
-        .addTo(currentMap);
-
-      markersRef.current.push(vehicleMarker);
-
-      // Adicionar marcadores de entrega
-      orders.forEach((order) => {
-        if (!order.latitude || !order.longitude) return;
-
-        const deliveryMarkerElement = document.createElement("div");
-        deliveryMarkerElement.className = "delivery-marker";
-        deliveryMarkerElement.innerHTML = `
-          <div class="delivery-marker-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="10" fill="#ef4444" stroke="white" stroke-width="2"/>
-              <text x="12" y="16" text-anchor="middle" fill="white" font-size="10" font-weight="bold">P</text>
+      if (current_location.latitude && current_location.longitude) {
+        // Marcador do veículo
+        const vehicleMarkerElement = document.createElement("div");
+        vehicleMarkerElement.className = "vehicle-marker";
+        vehicleMarkerElement.innerHTML = `
+          <div class="vehicle-marker-icon" style="background-color: #3b82f6; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="1" y="3" width="15" height="13"></rect>
+              <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+              <circle cx="5.5" cy="18.5" r="2.5"></circle>
+              <circle cx="18.5" cy="18.5" r="2.5"></circle>
             </svg>
           </div>
         `;
 
-        const deliveryPopup = new maplibregl.Popup({ offset: 15 }).setHTML(`
-          <div class="delivery-popup">
-            <h4 class="font-bold text-sm">Pedido ${order.order_number}</h4>
-            <p class="text-xs text-gray-600">${order.address}</p>
-            <p class="text-xs text-gray-600">CEP: ${order.zipcode}</p>
-            <p class="text-xs text-gray-600">Status: ${order.status}</p>
+        const vehiclePopup = new maplibregl.Popup({ offset: 25 }).setHTML(`
+          <div class="vehicle-popup p-2">
+            <h3 class="font-bold text-sm border-b mb-1">${vehicle.name}</h3>
+            <p class="text-xs"><strong>Placa:</strong> ${vehicle.plate}</p>
+            <p class="text-xs"><strong>Motorista:</strong> ${driver.name}</p>
+            <p class="text-xs"><strong>Pedidos:</strong> ${orders.length}</p>
           </div>
         `);
 
-        deliveryMarkerElement.addEventListener("mouseenter", () => {
-          deliveryPopup.addTo(currentMap);
-        });
-        deliveryMarkerElement.addEventListener("mouseleave", () => {
-          deliveryPopup.remove();
-        });
-
-        const deliveryMarker = new maplibregl.Marker({
-          element: deliveryMarkerElement,
-          anchor: "bottom",
-        })
-          .setLngLat([order.longitude, order.latitude])
-          .setPopup(deliveryPopup)
+        const vehicleMarker = new maplibregl.Marker({ element: vehicleMarkerElement })
+          .setLngLat([current_location.longitude, current_location.latitude])
+          .setPopup(vehiclePopup)
           .addTo(currentMap);
 
-        markersRef.current.push(deliveryMarker);
-      });
+        markersRef.current.push(vehicleMarker);
+        bounds.extend([current_location.longitude, current_location.latitude]);
+        hasCoords = true;
+
+        // Marcadores de entrega
+        orders.forEach((order) => {
+          if (!order.latitude || !order.longitude) return;
+
+          const deliveryMarkerElement = document.createElement("div");
+          deliveryMarkerElement.className = "delivery-marker";
+          deliveryMarkerElement.innerHTML = `
+            <div class="delivery-marker-icon" style="background-color: #ef4444; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+              <span style="color: white; font-size: 12px; font-weight: bold;">P</span>
+            </div>
+          `;
+
+          const deliveryPopup = new maplibregl.Popup({ offset: 15 }).setHTML(`
+            <div class="delivery-popup p-2">
+              <h4 class="font-bold text-sm border-b mb-1">Pedido #${order.order_number}</h4>
+              <p class="text-xs">${order.address}</p>
+              <p class="text-xs"><strong>Status:</strong> ${order.status}</p>
+            </div>
+          `);
+
+          const deliveryMarker = new maplibregl.Marker({ element: deliveryMarkerElement })
+            .setLngLat([order.longitude, order.latitude])
+            .setPopup(deliveryPopup)
+            .addTo(currentMap);
+
+          markersRef.current.push(deliveryMarker);
+          bounds.extend([order.longitude, order.latitude]);
+        });
+      }
     });
-  }, [vehicles]);
+
+    if (hasCoords && vehicles.length > 0) {
+      currentMap.fitBounds(bounds, { padding: 50, maxZoom: 12 });
+    }
+  }, [vehicles, mapLoaded]);
 
   if (loading) {
     return (
       <Card className="p-6 mb-6">
-        <div className="h-96 bg-gray-100 rounded-lg flex items-center justify-center">
-          <p className="text-gray-500">Carregando mapa...</p>
+        <div className="h-96 bg-slate-50 rounded-lg flex items-center justify-center border-2 border-dashed">
+          <p className="text-slate-400 animate-pulse">Carregando dados do mapa...</p>
         </div>
       </Card>
     );
   }
 
   return (
-    <Card className="p-6 mb-6">
-      <h2 className="text-xl font-bold text-slate-900 mb-4">Rastreamento de Veículos</h2>
+    <Card className="p-6 mb-6 shadow-md border-slate-200">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold text-slate-900">Rastreamento em Tempo Real</h2>
+        <div className="flex items-center gap-4 text-xs">
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-full bg-blue-500 border border-white shadow-sm"></div>
+            <span>Veículo</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-full bg-red-500 border border-white shadow-sm"></div>
+            <span>Ponto de Entrega</span>
+          </div>
+        </div>
+      </div>
+      
       <div
         ref={mapContainer}
-        className="w-full h-96 rounded-lg overflow-hidden border border-gray-200"
+        className="w-full h-[450px] rounded-xl overflow-hidden border border-slate-200 shadow-inner"
       />
-      {vehicles.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
-          <p>Nenhum veículo em rota no momento</p>
+      
+      {!loading && vehicles.length === 0 && (
+        <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-100 text-center">
+          <p className="text-slate-500 text-sm italic">Nenhum veículo em rota para exibição no mapa.</p>
         </div>
       )}
     </Card>
