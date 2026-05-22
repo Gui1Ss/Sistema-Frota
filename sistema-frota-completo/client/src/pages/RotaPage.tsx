@@ -190,11 +190,22 @@ export default function RotaPage() {
         vehicleid: parseInt(selectedVehicle),
         status: "pending",
         deliveryaddress: primeiroPedido?.nfenfanem || null,
-        deliverynumber: String(primeiroPedido?.nfenmuemi) || null,
+        deliverycity: String(primeiroPedido?.nfenmuemi) || null,
         deliverydistrict: primeiroPedido?.nfenbaiem || null,
-        deliverycity: primeiroPedido?.nfennomue || null,
-        deliverystate: primeiroPedido?.nfenesemi || null,
+        deliverystate: primeiroPedido?.nfennomue || null,
         deliveryzipcode: primeiroPedido?.cep || primeiroPedido?.nfencepem || null
+
+    //     "pedido": "16719",
+    // "nosempant": "BRUNA CUNHA DE MELLO                    ",
+    // "nosempcgc": "756.284.571-91    ",
+    // "nfenfanem": "RUA PRESIDENTE PRUDENTE SN QD2 LT 07                        ",
+    // "nfenmuemi": "GUANABARA           ",
+    // "nfenbaiem": "JUSSARA                       ",
+    // "nfennomue": "PR",
+    // "nfenesemi": "76270-000",
+    // "telefone": "(71) 9381-4027"
+
+
       }
     };
 
@@ -417,7 +428,7 @@ export default function RotaPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-600">
-                        {[rota.deliveryaddress, rota.deliverynumber, rota.deliverycity, rota.deliverystate].filter(Boolean).join(", ") || "Não informado"}
+                        {[rota.deliveryaddress, rota.deliverycity, rota.deliverystate].filter(Boolean).join(", ") || "Não informado"}
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-600">
                         {new Date(rota.createdat).toLocaleDateString("pt-BR")}
