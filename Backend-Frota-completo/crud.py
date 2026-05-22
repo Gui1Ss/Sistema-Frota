@@ -67,8 +67,18 @@ def update_vehicle(db: Session, vehicle_id: int, vehicle: schemas.VehicleUpdate)
     return db_vehicle
 
 # --- Routes ---
+import random
+
 def create_route(db: Session, route: schemas.RouteCreate):
-    db_route = models.Route(**route.model_dump())
+    route_data = route.model_dump()
+    if not route_data.get('color'):
+        # Gerar cor aleatória em formato HSL para garantir boa visibilidade
+        h = random.randint(0, 360)
+        s = random.randint(60, 90)
+        l = random.randint(40, 60)
+        route_data['color'] = f"hsl({h}, {s}%, {l}%)"
+        
+    db_route = models.Route(**route_data)
     db.add(db_route)
     db.commit()
     db.refresh(db_route)

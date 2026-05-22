@@ -55,6 +55,7 @@ class RouteBase(BaseModel):
     driverid: Optional[int] = None
     vehicleid: Optional[int] = None
     status: Optional[str] = "pending"
+    color: Optional[str] = None
 
 class RouteCreate(RouteBase):
     pass

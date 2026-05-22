@@ -157,8 +157,42 @@ def update_route(route_id: int, route: schemas.RouteUpdate, db: Session = Depend
 
 @app.delete("/routes/{route_id}")
 def delete_route(route_id: int, db: Session = Depends(get_db)):
+    # Para remover uma rota, só será possível caso todas as entregas/deliverys tenham sido excluídos
+    deliveries_count = db.query(models.Delivery).filter(models.Delivery.routeid == route_id).count()
+    if deliveries_count > 0:
+        raise HTTPException(status_code=400, detail="Não é possível excluir uma rota que possui entregas vinculadas. Exclua as entregas primeiro.")
+    
+    # Excluir itens da rota primeiro
+    db.query(models.RouteItem).filter(models.RouteItem.routeid == route_id).delete()
+    # Excluir rastreamento
+    db.query(models.GPSTracking).filter(models.GPSTracking.routeid == route_id).delete()
+    # Excluir notificações
+    db.query(models.WhatsAppNotification).filter(models.WhatsAppNotification.routeid == route_id).delete()
+    
     crud.delete_item(db, models.Route, route_id)
-    return {"message": "Route deleted"}
+    return {"message": "Rota excluída com sucesso"}
+
+@app.delete("/route-items/{item_id}")
+def delete_route_item(item_id: int, db: Session = Depends(get_db)):
+    item = db.query(models.RouteItem).filter(models.RouteItem.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item não encontrado")
+    
+    rota = db.query(models.Route).filter(models.Route.id == item.routeid).first()
+    
+    # Para remover um pedido, só será possível caso a rota não tenha sido despachada (status != 'in_progress')
+    # Caso já tenha saído, só será possível remover se o delivery do pedido tiver sido removido
+    if rota.status == "in_progress":
+        delivery = db.query(models.Delivery).filter(
+            models.Delivery.routeid == item.routeid,
+            models.Delivery.ordernumber == item.ordernumber
+        ).first()
+        if delivery:
+            raise HTTPException(status_code=400, detail="Não é possível remover um pedido de uma rota em andamento que ainda possui entrega vinculada. Exclua a entrega primeiro.")
+            
+    db.delete(item)
+    db.commit()
+    return {"message": "Pedido removido da rota"}
 
 
 
@@ -321,6 +355,7 @@ def get_dashboard_map(db: Session = Depends(get_db)):
             
         results.append({
             "route_id": route.id,
+            "color": route.color,
             "vehicle": {
                 "id": route.vehicle.id,
                 "name": route.vehicle.name,

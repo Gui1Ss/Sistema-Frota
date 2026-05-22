@@ -33,6 +33,7 @@ interface Order {
 
 interface RouteData {
   route_id: number;
+  color?: string;
   vehicle: Vehicle;
   driver: Driver;
   current_location: CurrentLocation;
@@ -111,20 +112,20 @@ export default function VehicleDashboardMap() {
       let hasCoords = false;
 
       vehicles.forEach((route) => {
-        const { current_location, vehicle, driver, orders } = route;
+        const { current_location, vehicle, driver, orders, color } = route;
+        const routeColor = color || "#3b82f6"; // Fallback para azul
 
         if (current_location.latitude && current_location.longitude) {
           // Veículo
           const vEl = document.createElement("div");
-          vEl.innerHTML = `<div style="background:#3b82f6;width:30px;height:30px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 5px rgba(0,0,0,0.4);">
+          vEl.innerHTML = `<div style="background:${routeColor};width:30px;height:30px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 5px rgba(0,0,0,0.4);">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
           </div>`;
 
           const vPopup = new maplibregl.Popup({ offset: 25 }).setHTML(`
             <div style="padding:5px;">
               <b style="display:block;border-bottom:1px solid #ccc;margin-bottom:5px;">${vehicle.name}</b>
-              <small>Placa: ${vehicle.plate}  
-Motorista: ${driver.name}</small>
+              <small>Placa: ${vehicle.plate}<br/>Motorista: ${driver.name}</small>
             </div>
           `);
 
@@ -141,14 +142,13 @@ Motorista: ${driver.name}</small>
           orders.forEach((order) => {
             if (!order.latitude || !order.longitude) return;
             const pEl = document.createElement("div");
-            pEl.innerHTML = `<div style="background:#ef4444;width:20px;height:20px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 4px rgba(0,0,0,0.3);">
+            pEl.innerHTML = `<div style="background:${routeColor};width:20px;height:20px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 4px rgba(0,0,0,0.3);">
               <span style="color:#fff;font-size:10px;font-weight:bold;">P</span>
             </div>`;
 
             const pPopup = new maplibregl.Popup({ offset: 15 }).setHTML(`
               <div style="padding:5px;">
-                <b>Pedido #${order.order_number}</b>  
-
+                <b>Pedido #${order.order_number}</b><br/>
                 <small>${order.address}</small>
               </div>
             `);

@@ -33,6 +33,7 @@ class Route(Base):
     driverid = Column(Integer, ForeignKey("drivers.id"))
     vehicleid = Column(Integer, ForeignKey("vehicles.id"))
     status = Column(String, default="pending")
+    color = Column(String) # Cor da rota em formato RGB ou HSL
     createdat = Column(DateTime(timezone=True), server_default=func.now())
     updatedat = Column(DateTime(timezone=True), onupdate=func.now())
 
