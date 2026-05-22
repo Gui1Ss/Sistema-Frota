@@ -326,10 +326,10 @@ export default function RotaPage() {
                             #{pedido.pedido} - {pedido.client_name}
                           </div>
                           <div className="text-xs text-slate-600">
-                            {pedido.address}, {pedido.neighborhood} - {pedido.city}, {pedido.state}
+                            {pedido.address}, {pedido.city}, {pedido.neighborhood} - {pedido.state}
                           </div>
                           <div className="text-xs text-slate-500 mt-1">
-                            CEP: {pedido.zipcode} | Sequência: {pedido.sequencia}
+                            CEP: {pedido.zipcode} | CPF/CPNJ: {pedido.cnpj} | Sequência: {pedido.sequencia}
                           </div>
                         </div>
                         <Button
