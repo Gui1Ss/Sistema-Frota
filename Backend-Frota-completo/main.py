@@ -122,6 +122,9 @@ def create_route(route: schemas.RouteWeb, db: Session = Depends(get_db)):
     nova_rota = crud.create_route(db=db, route=route.route)
 
     for i in lista_pedidos:
+
+        res = requests.get(f"https://viacep.com.br/ws/{i.zipcode}/json/")
+        
         item_data = {
             "routeid": nova_rota.id,
             "ordernumber": i.ordernumber,
@@ -524,5 +527,5 @@ async def websocket_gps(websocket: WebSocket):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)
 
