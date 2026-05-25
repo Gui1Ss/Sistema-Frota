@@ -313,7 +313,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 @app.post("/drivers/login", response_model=schemas.Token)
 def login_driver(login_data: schemas.DriverLogin, db: Session = Depends(get_db)):
-    driver = crud.get_driver_by_email(db, email=login_data.email)
+    driver = crud.get_driver_by_cpf(db, email=login_data.email)
     if not driver or not crud.verify_password(login_data.passwordHash, driver.passwordHash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
