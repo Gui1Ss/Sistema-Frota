@@ -14,7 +14,7 @@ class Driver(Base):
     licenseexpiry = Column(DateTime)
     status = Column(String, default="active")
     email = Column(String, unique=True, index=True)
-    password_hash = Column(String)
+    passwordHash = Column(String)
 
     routes = relationship("Route", back_populates="driver")
 
