@@ -25,7 +25,7 @@ def get_erp_db():
         db.close()
 
 def mensagem(instance: str, number: str, text: str):
-    r = requests.post(f"http://192.168.1.171:8080/message/sendText/{instance}", json={
+    r = requests.post(f"http://192.168.1.178:8080/message/sendText/{instance}", json={
         "number": number,
         "text": text
     }, headers={
