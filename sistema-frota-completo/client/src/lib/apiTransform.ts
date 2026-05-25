@@ -31,7 +31,7 @@ export interface DriverApiPayload {
   licensecategory?: string;
   status?: string;
   email?: string;
-  password?: string;
+  passwordHash?: string;
 }
 
 export const transformDriverToApi = (formData: DriverFormData): DriverApiPayload => {
@@ -44,7 +44,7 @@ export const transformDriverToApi = (formData: DriverFormData): DriverApiPayload
     licensecategory: formData.categoria || "D",
     status: "active",
     email: formData.email,
-    password: formData.senha
+    passwordHash: formData.senha
   };
 };
 
