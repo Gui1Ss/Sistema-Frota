@@ -127,6 +127,8 @@ def create_route(route: schemas.RouteWeb, db: Session = Depends(get_db)):
         
         dados = res.json()
 
+        print(i)
+
         # Monta endereço completo
         logradouro = dados["logradouro"]
         bairro = dados["bairro"]
