@@ -54,8 +54,8 @@ def create_driver(db: Session, driver: schemas.DriverCreate):
     db.refresh(db_driver)
     return db_driver
 
-def get_driver_by_cpf(db: Session, cpf: str):
-    return db.query(models.Driver).filter(models.Driver.cpf == cpf).first()
+def get_driver_by_cpf(db: Session, email: str):
+    return db.query(models.Driver).filter(models.Driver.cpf == email).first()
 
 def update_driver(db: Session, driver_id: int, driver: schemas.DriverUpdate):
     db_driver = get_item(db, models.Driver, driver_id)
