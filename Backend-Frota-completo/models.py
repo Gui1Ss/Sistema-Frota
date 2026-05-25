@@ -3,7 +3,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
 
-class Drivers(Base):
+class Driver(Base):
     __tablename__ = "drivers"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
