@@ -239,7 +239,7 @@ nano .env
 pnpm install
 
 # Criar banco de dados
-PGPASSWORD=postgres psql -h 192.168.1.171 -U postgres -d logistica -f scripts/setup-logistica-correct.sql
+PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -f scripts/setup-logistica-correct.sql
 
 # Iniciar servidor
 pnpm dev
@@ -252,7 +252,7 @@ pnpm dev
 bash scripts/diagnostico-local.sh
 
 # Abrir navegador
-http://192.168.1.171:3000
+http://192.168.1.178:3000
 
 # Cadastrar motorista
 # - Clique em Motoristas
@@ -261,7 +261,7 @@ http://192.168.1.171:3000
 # - Clique em Cadastrar
 
 # Verificar no banco
-PGPASSWORD=postgres psql -h 192.168.1.171 -U postgres -d logistica -c "SELECT * FROM drivers;"
+PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -c "SELECT * FROM drivers;"
 ```
 
 ---
@@ -286,13 +286,13 @@ Execute no seu Debian:
 
 ```bash
 # 1. Testar conexão
-PGPASSWORD=postgres psql -h 192.168.1.171 -U postgres -d logistica -c "SELECT 1;"
+PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -c "SELECT 1;"
 
 # 2. Verificar tabelas
-PGPASSWORD=postgres psql -h 192.168.1.171 -U postgres -d logistica -c "\dt"
+PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -c "\dt"
 
 # 3. Verificar estrutura drivers
-PGPASSWORD=postgres psql -h 192.168.1.171 -U postgres -d logistica -c "\d drivers"
+PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -c "\d drivers"
 
 # 4. Iniciar servidor
 pnpm dev
@@ -301,7 +301,7 @@ pnpm dev
 curl http://localhost:3000/api/health | jq .
 
 # 6. Abrir navegador
-# http://192.168.1.171:3000
+# http://192.168.1.178:3000
 ```
 
 Se tudo acima funcionar, o sistema está pronto! 🎉

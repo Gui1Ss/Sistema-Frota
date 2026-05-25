@@ -99,7 +99,7 @@ Adicione ao seu `.env` local:
 
 ```bash
 # Banco Logística (Sistema próprio)
-DATABASE_URL_LOGISTICA=postgresql://postgres:postgres@192.168.1.171:5432/logistica
+DATABASE_URL_LOGISTICA=postgresql://postgres:postgres@192.168.1.178:5432/logistica
 
 # Banco ERP (Somente leitura)
 DATABASE_URL_ERP=postgresql://postgres:postgres@192.168.1.17:5432/salutem
@@ -157,13 +157,13 @@ Veja o arquivo `TESTE_MVP_MANUAL.md` para instruções detalhadas de cada teste.
 
 ### Teste 1: Conexão com Bancos
 ```bash
-psql -h 192.168.1.171 -U postgres -d logistica -c "SELECT 1"
+psql -h 192.168.1.178 -U postgres -d logistica -c "SELECT 1"
 psql -h 192.168.1.17 -U postgres -d salutem -c "SELECT 1"
 ```
 
 ### Teste 2: Verificar Migrations
 ```bash
-psql -h 192.168.1.171 -U postgres -d logistica -c "\dt"
+psql -h 192.168.1.178 -U postgres -d logistica -c "\dt"
 ```
 
 Tabelas esperadas: `drivers`, `vehicles`, `routes`, `deliveries`, `operation_logs`
@@ -205,7 +205,7 @@ Tabelas esperadas: `drivers`, `vehicles`, `routes`, `deliveries`, `operation_log
 
 ## 6. Estrutura de Dados
 
-### Banco Logística (192.168.1.171:5432/logistica)
+### Banco Logística (192.168.1.178:5432/logistica)
 
 #### Tabela: drivers
 ```sql
@@ -397,7 +397,7 @@ Após validar o MVP com sucesso:
 
 ### Erro: "Tabelas não encontradas"
 - Execute as migrations: `node scripts/test-mvp-complete.mjs`
-- Verifique se as tabelas foram criadas: `psql -h 192.168.1.171 -U postgres -d logistica -c "\dt"`
+- Verifique se as tabelas foram criadas: `psql -h 192.168.1.178 -U postgres -d logistica -c "\dt"`
 
 ### Erro: "Pedido não encontrado no ERP"
 - Verifique se o número do pedido existe no banco ERP

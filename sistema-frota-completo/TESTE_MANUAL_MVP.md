@@ -8,13 +8,13 @@
 
 1. **Bancos PostgreSQL configurados:**
    ```bash
-   export DATABASE_URL_LOGISTICA=postgresql://postgres:postgres@192.168.1.171:5432/logistica
+   export DATABASE_URL_LOGISTICA=postgresql://postgres:postgres@192.168.1.178:5432/logistica
    export DATABASE_URL_ERP=postgresql://postgres:postgres@192.168.1.17:5432/salutem
    ```
 
 2. **Migrations aplicadas no banco LOGÍSTICA:**
    ```bash
-   psql -h 192.168.1.171 -U postgres -d logistica -f drizzle/migrations/0002_create_logistica_tables.sql
+   psql -h 192.168.1.178 -U postgres -d logistica -f drizzle/migrations/0002_create_logistica_tables.sql
    ```
 
 3. **Servidor rodando:**
@@ -265,7 +265,7 @@ SELECT id, motorista_id, veiculo_id, status FROM routes ORDER BY created_at DESC
 
 ```sql
 -- Conectar ao banco logistica
-psql -h 192.168.1.171 -U postgres -d logistica
+psql -h 192.168.1.178 -U postgres -d logistica
 
 -- Listar motoristas
 SELECT id, nome, cpf, telefone, ativo FROM drivers;

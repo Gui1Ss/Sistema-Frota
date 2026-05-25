@@ -87,7 +87,7 @@ nano .env
 **Valores importantes:**
 
 ```
-DATABASE_URL_LOGISTICA=postgresql://postgres:postgres@192.168.1.171:5432/logistica
+DATABASE_URL_LOGISTICA=postgresql://postgres:postgres@192.168.1.178:5432/logistica
 DATABASE_URL_ERP=postgresql://postgres:postgres@192.168.1.17:5432/salutem
 NODE_ENV=development
 PORT=3000
@@ -106,7 +106,7 @@ Ctrl+X, Y, Enter
 ### 5.1 - Testar conexão com banco Logística
 
 ```bash
-PGPASSWORD=postgres psql -h 192.168.1.171 -U postgres -d logistica -c "SELECT 1;"
+PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -c "SELECT 1;"
 ```
 
 **Esperado:** Retorna `1`
@@ -114,13 +114,13 @@ PGPASSWORD=postgres psql -h 192.168.1.171 -U postgres -d logistica -c "SELECT 1;
 ### 5.2 - Executar setup do banco
 
 ```bash
-PGPASSWORD=postgres psql -h 192.168.1.171 -U postgres -d logistica -f scripts/setup-logistica-correct.sql
+PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -f scripts/setup-logistica-correct.sql
 ```
 
 ### 5.3 - Verificar se tabelas foram criadas
 
 ```bash
-PGPASSWORD=postgres psql -h 192.168.1.171 -U postgres -d logistica -c "\dt"
+PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -c "\dt"
 ```
 
 **Esperado:** Deve listar tabelas: drivers, vehicles, routes, deliveries, etc.
@@ -128,7 +128,7 @@ PGPASSWORD=postgres psql -h 192.168.1.171 -U postgres -d logistica -c "\dt"
 ### 5.4 - Verificar estrutura da tabela drivers
 
 ```bash
-PGPASSWORD=postgres psql -h 192.168.1.171 -U postgres -d logistica -c "\d drivers"
+PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -c "\d drivers"
 ```
 
 ---
@@ -188,7 +188,7 @@ curl http://localhost:3000/api/health | jq .
 ### 8.3 - Abrir no navegador
 
 ```
-http://192.168.1.171:3000
+http://192.168.1.178:3000
 ```
 
 ou
@@ -203,7 +203,7 @@ http://localhost:3000
 
 ### 9.1 - Via navegador
 
-1. Abra: `http://192.168.1.171:3000`
+1. Abra: `http://192.168.1.178:3000`
 2. Clique em "Motoristas"
 3. Clique em "Novo Motorista"
 4. Preencha:
@@ -217,7 +217,7 @@ http://localhost:3000
 ### 9.2 - Verificar no banco
 
 ```bash
-PGPASSWORD=postgres psql -h 192.168.1.171 -U postgres -d logistica -c "SELECT * FROM drivers;"
+PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -c "SELECT * FROM drivers;"
 ```
 
 **Esperado:** Deve retornar a linha com João Silva
@@ -313,7 +313,7 @@ pnpm dev
 cat .env | grep DATABASE_URL
 
 # Testar conexão manualmente
-PGPASSWORD=postgres psql -h 192.168.1.171 -U postgres -d logistica -c "SELECT 1;"
+PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -c "SELECT 1;"
 ```
 
 ### Problema: "Tabela drivers não existe"
@@ -322,10 +322,10 @@ PGPASSWORD=postgres psql -h 192.168.1.171 -U postgres -d logistica -c "SELECT 1;
 
 ```bash
 # Executar setup
-PGPASSWORD=postgres psql -h 192.168.1.171 -U postgres -d logistica -f scripts/setup-logistica-correct.sql
+PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -f scripts/setup-logistica-correct.sql
 
 # Verificar
-PGPASSWORD=postgres psql -h 192.168.1.171 -U postgres -d logistica -c "\dt"
+PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -c "\dt"
 ```
 
 ### Problema: "Erro ao cadastrar motorista"
