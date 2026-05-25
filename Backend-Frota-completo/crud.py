@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 import models, schemas
-from typing import Optional
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -45,17 +44,17 @@ def delete_item(db: Session, model, item_id: int):
 # --- Drivers ---
 def create_driver(db: Session, driver: schemas.DriverCreate):
     driver_data = driver.model_dump()
-    password = driver_data.pop("passwordHash", None)
+    password = driver_data.pop("password", None)
     if password:
-        driver_data["passwordHash"] = get_password_hash(password)
+        driver_data["password_hash"] = get_password_hash(password)
     db_driver = models.Driver(**driver_data)
     db.add(db_driver)
     db.commit()
     db.refresh(db_driver)
     return db_driver
 
-def get_driver_by_cpf(db: Session, email: str):
-    return db.query(models.Driver).filter(models.Driver.cpf == email).first()
+def get_driver_by_email(db: Session, email: str):
+    return db.query(models.Driver).filter(models.Driver.email == email).first()
 
 def update_driver(db: Session, driver_id: int, driver: schemas.DriverUpdate):
     db_driver = get_item(db, models.Driver, driver_id)

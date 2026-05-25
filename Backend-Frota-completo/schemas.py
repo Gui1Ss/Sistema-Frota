@@ -14,15 +14,16 @@ class DriverBase(BaseModel):
     email: Optional[str] = None
 
 class DriverCreate(DriverBase):
-    passwordHash: Optional[str] = None
+    password: Optional[str] = None
 
 class DriverLogin(BaseModel):
     email: str
-    passwordHash: str
+    password: str
 
 class Token(BaseModel):
     access_token: str
     token_type: str
+    driver: Optional[Driver] = None
 
 class DriverUpdate(BaseModel):
     name: Optional[str] = None

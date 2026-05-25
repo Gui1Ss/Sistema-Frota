@@ -297,7 +297,7 @@ from datetime import timedelta
 import jwt
 from fastapi import status
 
-SECRET_KEY = "citrix21" # Em produção, use uma variável de ambiente
+SECRET_KEY = "SuaChaveSecretaSuperSegura" # Em produção, use uma variável de ambiente
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24 horas
 
@@ -313,8 +313,8 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 @app.post("/drivers/login", response_model=schemas.Token)
 def login_driver(login_data: schemas.DriverLogin, db: Session = Depends(get_db)):
-    driver = crud.get_driver_by_cpf(db, email=login_data.email)
-    if not driver or not crud.verify_password(login_data.passwordHash, driver.passwordHash):
+    driver = crud.get_driver_by_email(db, email=login_data.email)
+    if not driver or not crud.verify_password(login_data.password, driver.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email ou senha incorretos",
@@ -326,7 +326,12 @@ def login_driver(login_data: schemas.DriverLogin, db: Session = Depends(get_db))
         data={"sub": driver.email, "id": driver.id, "name": driver.name}, 
         expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer",
+        "driver": driver
+    }
+
 
 
 

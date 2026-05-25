@@ -2,7 +2,6 @@ from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
-from datetime import datetime, timedelta
 
 class Driver(Base):
     __tablename__ = "drivers"
@@ -15,7 +14,7 @@ class Driver(Base):
     licenseexpiry = Column(DateTime)
     status = Column(String, default="active")
     email = Column(String, unique=True, index=True)
-    passwordHash = Column(String)
+    password_hash = Column(String)
 
     routes = relationship("Route", back_populates="driver")
 
