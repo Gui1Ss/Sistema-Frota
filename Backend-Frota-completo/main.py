@@ -125,6 +125,8 @@ def create_route(route: schemas.RouteWeb, db: Session = Depends(get_db)):
 
         res = requests.get(f"https://viacep.com.br/ws/{i.zipcode}/json/")
         
+        print(res)
+
         item_data = {
             "routeid": nova_rota.id,
             "ordernumber": i.ordernumber,
