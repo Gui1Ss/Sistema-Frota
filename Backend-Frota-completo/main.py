@@ -125,7 +125,55 @@ def create_route(route: schemas.RouteWeb, db: Session = Depends(get_db)):
 
         res = requests.get(f"https://viacep.com.br/ws/{i.zipcode}/json/")
         
-        print(res.json())
+        dados = res.json()
+
+        # Monta endereço completo
+        logradouro = dados["logradouro"]
+        bairro = dados["bairro"]
+        cidade = dados["localidade"]
+        estado = dados["uf"]
+
+        endereco = f"{logradouro}, {numero}, {bairro}, {cidade}, {estado}, Brasil"
+
+        print("Endereço:")
+        print(endereco)
+
+        # -------------------------
+        # BUSCA COORDENADAS
+        # -------------------------
+        url_nominatim = "https://nominatim.openstreetmap.org/search"
+
+        parametros = {
+            "q": endereco,
+            "format": "json",
+            "limit": 1
+        }
+
+        headers = {
+            "User-Agent": "MeuProjetoPython/1.0"
+        }
+
+        geo = requests.get(
+            url_nominatim,
+            params=parametros,
+            headers=headers
+        )
+
+        resultado = geo.json()
+
+        # -------------------------
+        # EXIBE RESULTADO
+        # -------------------------
+        if resultado:
+            latitude = resultado[0]["lat"]
+            longitude = resultado[0]["lon"]
+
+            print("\nCoordenadas:")
+            print("Latitude:", latitude)
+            print("Longitude:", longitude)
+
+        else:
+            print("Endereço não encontrado.")
 
         item_data = {
             "routeid": nova_rota.id,
