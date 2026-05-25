@@ -17,8 +17,8 @@ class DriverCreate(DriverBase):
     password: Optional[str] = None
 
 class DriverLogin(BaseModel):
-    email: str
-    password: str
+    cpf: str
+    passwordHash: str
 
 class DriverUpdate(BaseModel):
     name: Optional[str] = None
