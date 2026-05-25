@@ -46,7 +46,7 @@ def create_driver(db: Session, driver: schemas.DriverCreate):
     driver_data = driver.model_dump()
     password = driver_data.pop("password", None)
     if password:
-        driver_data["password_hash"] = get_password_hash(password)
+        driver_data["passwordHash"] = get_password_hash(password)
     db_driver = models.Driver(**driver_data)
     db.add(db_driver)
     db.commit()
