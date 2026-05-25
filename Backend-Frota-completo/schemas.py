@@ -20,11 +20,6 @@ class DriverLogin(BaseModel):
     email: str
     password: str
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-    driver: Optional[Driver] = None
-
 class DriverUpdate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
@@ -37,6 +32,11 @@ class DriverUpdate(BaseModel):
 class Driver(DriverBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    driver: Optional[Driver] = None
 
 # --- Vehicles ---
 class VehicleBase(BaseModel):
