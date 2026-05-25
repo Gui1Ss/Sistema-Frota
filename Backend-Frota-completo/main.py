@@ -6,6 +6,7 @@ from database import engine, get_db
 import requests
 import json
 from sqlalchemy import create_engine, text
+from typing import Optional
 
 
 apikey = 'citrix21'
