@@ -3,7 +3,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
 
-class Driver(Base):
+class Drivers(Base):
     __tablename__ = "drivers"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
@@ -14,7 +14,7 @@ class Driver(Base):
     licenseexpiry = Column(DateTime)
     status = Column(String, default="active")
     email = Column(String, unique=True, index=True)
-    password_hash = Column(String)
+    passwordHash = Column(String)
 
     routes = relationship("Route", back_populates="driver")
 
