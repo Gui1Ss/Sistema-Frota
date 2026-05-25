@@ -122,60 +122,42 @@ def create_route(route: schemas.RouteWeb, db: Session = Depends(get_db)):
     nova_rota = crud.create_route(db=db, route=route.route)
 
     for i in lista_pedidos:
-
-        res = requests.get(f"https://viacep.com.br/ws/{i.zipcode}/json/")
+        # Tenta buscar geolocalização se não houver latitude/longitude
+        latitude = i.latitude
+        longitude = i.longitude
         
-        dados = res.json()
-
-        print(i)
-        
-        # Monta endereço completo
-        logradouro = dados["logradouro"]
-        bairro = dados["bairro"]
-        cidade = dados["localidade"]
-        estado = dados["uf"]
-
-        # endereco = f"{logradouro}, {numero}, {bairro}, {cidade}, {estado}, Brasil"
-
-        # print("Endereço:")
-        # print(endereco)
-
-        # # -------------------------
-        # # BUSCA COORDENADAS
-        # # -------------------------
-        # url_nominatim = "https://nominatim.openstreetmap.org/search"
-
-        # parametros = {
-        #     "q": endereco,
-        #     "format": "json",
-        #     "limit": 1
-        # }
-
-        # headers = {
-        #     "User-Agent": "MeuProjetoPython/1.0"
-        # }
-
-        # geo = requests.get(
-        #     url_nominatim,
-        #     params=parametros,
-        #     headers=headers
-        # )
-
-        # resultado = geo.json()
-
-        # # -------------------------
-        # # EXIBE RESULTADO
-        # # -------------------------
-        # if resultado:
-        #     latitude = resultado[0]["lat"]
-        #     longitude = resultado[0]["lon"]
-
-        #     print("\nCoordenadas:")
-        #     print("Latitude:", latitude)
-        #     print("Longitude:", longitude)
-
-        # else:
-        #     print("Endereço não encontrado.")
+        if not latitude or not longitude:
+            try:
+                # 1. Tenta ViaCEP para garantir o endereço correto pelo CEP
+                res_cep = requests.get(f"https://viacep.com.br/ws/{i.zipcode}/json/")
+                if res_cep.status_code == 200:
+                    dados_cep = res_cep.json()
+                    logradouro = dados_cep.get("logradouro", i.address)
+                    bairro = dados_cep.get("bairro", i.neighborhood)
+                    cidade = dados_cep.get("localidade", i.city)
+                    estado = dados_cep.get("uf", i.state)
+                    
+                    # Monta endereço completo para o Nominatim
+                    # Se tiver número, adiciona na busca
+                    endereco_busca = f"{logradouro}, {i.address_number if i.address_number else ''}, {bairro}, {cidade}, {estado}, Brasil"
+                    
+                    # 2. Busca coordenadas no Nominatim
+                    url_nominatim = "https://nominatim.openstreetmap.org/search"
+                    parametros = {
+                        "q": endereco_busca,
+                        "format": "json",
+                        "limit": 1
+                    }
+                    headers = { "User-Agent": "SistemaFrota/1.0" }
+                    
+                    res_geo = requests.get(url_nominatim, params=parametros, headers=headers)
+                    resultado = res_geo.json()
+                    
+                    if resultado:
+                        latitude = float(resultado[0]["lat"])
+                        longitude = float(resultado[0]["lon"])
+            except Exception as e:
+                print(f"Erro na geolocalização automática: {str(e)}")
 
         item_data = {
             "routeid": nova_rota.id,
@@ -187,8 +169,9 @@ def create_route(route: schemas.RouteWeb, db: Session = Depends(get_db)):
             "city": i.city,
             "state": i.state,
             "zipcode": i.zipcode,
-            "latitude": i.latitude,
-            "longitude": i.longitude
+            "address_number": i.address_number,
+            "latitude": latitude,
+            "longitude": longitude
         }
 
         crud.create_route_item(db=db, item=item_data)
@@ -306,6 +289,43 @@ def update_delivery(delivery_id: int, delivery: schemas.DeliveryUpdate, db: Sess
 def delete_delivery(delivery_id: int, db: Session = Depends(get_db)):
     crud.delete_item(db, models.Delivery, delivery_id)
     return {"message": "Delivery deleted"}
+
+# --- AUTH ENDPOINTS ---
+
+from datetime import timedelta
+import jwt
+from fastapi import status
+
+SECRET_KEY = "SuaChaveSecretaSuperSegura" # Em produção, use uma variável de ambiente
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24 horas
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+@app.post("/drivers/login", response_model=schemas.Token)
+def login_driver(login_data: schemas.DriverLogin, db: Session = Depends(get_db)):
+    driver = crud.get_driver_by_email(db, email=login_data.email)
+    if not driver or not crud.verify_password(login_data.password, driver.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email ou senha incorretos",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": driver.email, "id": driver.id, "name": driver.name}, 
+        expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
 

@@ -1,5 +1,14 @@
 from sqlalchemy.orm import Session
+from passlib.context import CryptContext
 import models, schemas
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
 
 
 def get_dashboard(db: Session):
@@ -34,11 +43,18 @@ def delete_item(db: Session, model, item_id: int):
 
 # --- Drivers ---
 def create_driver(db: Session, driver: schemas.DriverCreate):
-    db_driver = models.Driver(**driver.model_dump())
+    driver_data = driver.model_dump()
+    password = driver_data.pop("password", None)
+    if password:
+        driver_data["password_hash"] = get_password_hash(password)
+    db_driver = models.Driver(**driver_data)
     db.add(db_driver)
     db.commit()
     db.refresh(db_driver)
     return db_driver
+
+def get_driver_by_email(db: Session, email: str):
+    return db.query(models.Driver).filter(models.Driver.email == email).first()
 
 def update_driver(db: Session, driver_id: int, driver: schemas.DriverUpdate):
     db_driver = get_item(db, models.Driver, driver_id)

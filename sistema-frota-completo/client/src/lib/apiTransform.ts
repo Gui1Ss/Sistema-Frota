@@ -19,6 +19,7 @@ export interface DriverFormData {
   email?: string;
   cnhValidade?: string;
   categoria?: string;
+  senha?: string;
 }
 
 export interface DriverApiPayload {
@@ -29,6 +30,8 @@ export interface DriverApiPayload {
   licenseexpiry?: string;
   licensecategory?: string;
   status?: string;
+  email?: string;
+  password?: string;
 }
 
 export const transformDriverToApi = (formData: DriverFormData): DriverApiPayload => {
@@ -39,7 +42,9 @@ export const transformDriverToApi = (formData: DriverFormData): DriverApiPayload
     licensenumber: formData.cnh,
     licenseexpiry: formData.cnhValidade || undefined,
     licensecategory: formData.categoria || "D",
-    status: "active"
+    status: "active",
+    email: formData.email,
+    password: formData.senha
   };
 };
 
@@ -203,6 +208,21 @@ export interface NotificationApiPayload {
   routeId: number;
   phone: string;
   message: string;
+}
+
+export interface RouteItemApiPayload {
+  orderNumber: string;
+  sequence: number;
+  status: string;
+  telefone: string;
+  address?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  zipcode?: string;
+  address_number?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export const transformNotificationToApi = (formData: NotificationFormData): NotificationApiPayload => {

@@ -26,6 +26,7 @@ export default function RotaPage() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [numeroPedido, setNumeroPedido] = useState("");
+  const [numeroEndereco, setNumeroEndereco] = useState("");
   const [selectedDriver, setSelectedDriver] = useState("");
   const [selectedVehicle, setSelectedVehicle] = useState("");
   const [pedidosBuscados, setPedidosBuscados] = useState<any[]>([]);
@@ -167,8 +168,13 @@ export default function RotaPage() {
       if (pedidosBuscados.some(p => p.pedido === pedido.pedido)) {
         toast.warning("Este pedido já foi adicionado");
       } else {
-        setPedidosBuscados([...pedidosBuscados, { ...pedido, sequencia: pedidosBuscados.length + 1 }]);
+        setPedidosBuscados([...pedidosBuscados, { 
+          ...pedido, 
+          address_number: numeroEndereco,
+          sequencia: pedidosBuscados.length + 1 
+        }]);
         setNumeroPedido("");
+        setNumeroEndereco("");
         toast.success("Pedido adicionado");
       }
     } catch (error: any) {
@@ -193,7 +199,8 @@ export default function RotaPage() {
         neighborhood: p.neighborhood,
         city: p.city,
         state: p.state,
-        zipcode: p.zipcode
+        zipcode: p.zipcode,
+        address_number: p.address_number
       })),
       route: {
         driverid: parseInt(selectedDriver),
@@ -338,18 +345,28 @@ export default function RotaPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Buscar Pedido no ERP</Label>
-                <div className="flex gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Buscar Pedido no ERP</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="Número do pedido..." 
+                      value={numeroPedido} 
+                      onChange={(e) => setNumeroPedido(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleSearchPedido()}
+                    />
+                    <Button onClick={handleSearchPedido} disabled={searchingPedido} variant="secondary">
+                      {searchingPedido ? "Buscando..." : <Search size={18} />}
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Número do Endereço (Opcional)</Label>
                   <Input 
-                    placeholder="Número do pedido..." 
-                    value={numeroPedido} 
-                    onChange={(e) => setNumeroPedido(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSearchPedido()}
+                    placeholder="Ex: 123" 
+                    value={numeroEndereco} 
+                    onChange={(e) => setNumeroEndereco(e.target.value)}
                   />
-                  <Button onClick={handleSearchPedido} disabled={searchingPedido} variant="secondary">
-                    {searchingPedido ? "Buscando..." : <Search size={18} />}
-                  </Button>
                 </div>
               </div>
 
@@ -361,7 +378,7 @@ export default function RotaPage() {
                       <div key={i} className="p-3 flex items-center justify-between bg-slate-50/50">
                         <div>
                           <p className="text-sm font-bold">#{p.pedido} - {p.client_name}</p>
-                          <p className="text-xs text-slate-500">{p.address}, {p.city}</p>
+                          <p className="text-xs text-slate-500">{p.address}{p.address_number ? `, ${p.address_number}` : ''}, {p.city}</p>
                         </div>
                         <Button variant="ghost" size="sm" onClick={() => setPedidosBuscados(pedidosBuscados.filter((_, idx) => idx !== i))} className="text-red-500">
                           <X size={16} />

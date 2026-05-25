@@ -11,9 +11,18 @@ class DriverBase(BaseModel):
     licensecategory: Optional[str] = None
     licenseexpiry: Optional[datetime] = None
     status: Optional[str] = "active"
+    email: Optional[str] = None
 
 class DriverCreate(DriverBase):
-    pass
+    password: Optional[str] = None
+
+class DriverLogin(BaseModel):
+    email: str
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
 
 class DriverUpdate(BaseModel):
     name: Optional[str] = None
@@ -86,6 +95,7 @@ class RouteItemBase(BaseModel):
     city: Optional[str] = None
     state: Optional[str] = None
     zipcode: Optional[str] = None
+    address_number: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
 
@@ -98,6 +108,7 @@ class RouteItemCreate(BaseModel):
     city: Optional[str] = None
     state: Optional[str] = None
     zipcode: Optional[str] = None
+    address_number: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
 
@@ -111,6 +122,7 @@ class RouteItemCreateWeb(BaseModel):
     city: Optional[str] = None
     state: Optional[str] = None
     zipcode: Optional[str] = None
+    address_number: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
 

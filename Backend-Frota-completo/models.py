@@ -13,6 +13,8 @@ class Driver(Base):
     licensecategory = Column(String)
     licenseexpiry = Column(DateTime)
     status = Column(String, default="active")
+    email = Column(String, unique=True, index=True)
+    password_hash = Column(String)
 
     routes = relationship("Route", back_populates="driver")
 
@@ -58,6 +60,7 @@ class RouteItem(Base):
     city = Column(String)
     state = Column(String)
     zipcode = Column(String)
+    address_number = Column(String)
     latitude = Column(Float)
     longitude = Column(Float)
 
