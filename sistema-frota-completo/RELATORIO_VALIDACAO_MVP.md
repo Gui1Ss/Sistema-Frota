@@ -86,7 +86,7 @@ O MVP foi implementado com sucesso e está pronto para validação com os bancos
 
 #### Banco de Dados
 - ✅ Duas conexões PostgreSQL separadas
-- ✅ Banco LOGÍSTICA: 192.168.1.178:5432/logistica
+- ✅ Banco LOGÍSTICA: 192.168.1.172:5432/logistica
 - ✅ Banco ERP: 192.168.1.17:5432/salutem
 - ✅ Migrations criadas para banco LOGÍSTICA
 - ✅ Somente leitura para banco ERP
@@ -197,13 +197,13 @@ curl http://localhost:3000/api/trpc/dashboard.stats
 
 ### 1. Configurar Variáveis de Ambiente
 ```bash
-export DATABASE_URL_LOGISTICA=postgresql://postgres:postgres@192.168.1.178:5432/logistica
+export DATABASE_URL_LOGISTICA=postgresql://postgres:postgres@192.168.1.172:5432/logistica
 export DATABASE_URL_ERP=postgresql://postgres:postgres@192.168.1.17:5432/salutem
 ```
 
 ### 2. Aplicar Migrations
 ```bash
-psql -h 192.168.1.178 -U postgres -d logistica -f drizzle/migrations/0002_create_logistica_tables.sql
+psql -h 192.168.1.172 -U postgres -d logistica -f drizzle/migrations/0002_create_logistica_tables.sql
 ```
 
 ### 3. Iniciar Servidor

@@ -95,7 +95,7 @@ O arquivo `drizzle/schema.ts` já estava correto com `pgTable()` e tipos Postgre
 ### 1. Verificar Conexão com Banco
 ```bash
 # Acessar o dashboard
-http://192.168.1.178:3000
+http://192.168.1.172:3000
 
 # Verificar logs do servidor
 tail -f .manus-logs/devserver.log
@@ -176,7 +176,7 @@ pnpm check
 pnpm dev
 
 # 4. Testar conexão com banco
-# Acessar http://192.168.1.178:3000 e verificar se carrega sem erros
+# Acessar http://192.168.1.172:3000 e verificar se carrega sem erros
 ```
 
 ---
@@ -186,7 +186,7 @@ pnpm dev
 ### Problema: "Erro ao conectar com banco"
 **Solução:**
 1. Verificar se `DATABASE_URL` está configurada corretamente
-2. Verificar se PostgreSQL está rodando em `192.168.1.178`
+2. Verificar se PostgreSQL está rodando em `192.168.1.172`
 3. Verificar credenciais de banco (usuário/senha)
 
 ### Problema: "Erro ao cadastrar motorista"

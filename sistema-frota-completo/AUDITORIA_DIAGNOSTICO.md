@@ -31,7 +31,7 @@ Se o script mostrar erro, execute estes comandos:
 ### 2.1 - Testar conexão com Logística
 
 ```bash
-PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -c "SELECT 1;"
+PGPASSWORD=postgres psql -h 192.168.1.172 -U postgres -d logistica -c "SELECT 1;"
 ```
 
 **Esperado:** `1` (uma linha com 1)
@@ -39,7 +39,7 @@ PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -c "SELECT 1;
 ### 2.2 - Listar tabelas
 
 ```bash
-PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -c "\dt"
+PGPASSWORD=postgres psql -h 192.168.1.172 -U postgres -d logistica -c "\dt"
 ```
 
 **Esperado:** Deve listar `drivers`, `vehicles`, `routes`, `deliveries`, etc.
@@ -47,7 +47,7 @@ PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -c "\dt"
 ### 2.3 - Verificar estrutura da tabela drivers
 
 ```bash
-PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -c "\d drivers"
+PGPASSWORD=postgres psql -h 192.168.1.172 -U postgres -d logistica -c "\d drivers"
 ```
 
 **Esperado:** Deve mostrar colunas: id, nome, cpf, cnh, telefone, email, ativo, createdAt, updatedAt
@@ -55,13 +55,13 @@ PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -c "\d driver
 ### 2.4 - Contar motoristas
 
 ```bash
-PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -c "SELECT COUNT(*) FROM drivers;"
+PGPASSWORD=postgres psql -h 192.168.1.172 -U postgres -d logistica -c "SELECT COUNT(*) FROM drivers;"
 ```
 
 ### 2.5 - Listar últimos motoristas
 
 ```bash
-PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -c "SELECT id, nome, cpf, telefone, ativo FROM drivers ORDER BY id DESC LIMIT 5;"
+PGPASSWORD=postgres psql -h 192.168.1.172 -U postgres -d logistica -c "SELECT id, nome, cpf, telefone, ativo FROM drivers ORDER BY id DESC LIMIT 5;"
 ```
 
 ---
@@ -114,7 +114,7 @@ curl -X POST http://localhost:3000/api/trpc/drivers.create \
 
 ### 4.1 - Abrir sistema
 
-Abra no navegador: `http://192.168.1.178:3000` (ou IP do seu servidor)
+Abra no navegador: `http://192.168.1.172:3000` (ou IP do seu servidor)
 
 ### 4.2 - Ir para Motoristas
 
@@ -138,7 +138,7 @@ Clique em "Motoristas" no menu lateral
 Execute no servidor:
 
 ```bash
-PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -c "SELECT * FROM drivers WHERE nome = 'Maria Santos';"
+PGPASSWORD=postgres psql -h 192.168.1.172 -U postgres -d logistica -c "SELECT * FROM drivers WHERE nome = 'Maria Santos';"
 ```
 
 **Esperado:** Deve retornar a linha com os dados de Maria
@@ -158,14 +158,14 @@ PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -c "SELECT * 
 cat /opt/logistica_app/.env | grep DATABASE_URL
 
 # Deve retornar:
-# DATABASE_URL_LOGISTICA=postgresql://postgres:postgres@192.168.1.178:5432/logistica
+# DATABASE_URL_LOGISTICA=postgresql://postgres:postgres@192.168.1.172:5432/logistica
 # DATABASE_URL_ERP=postgresql://postgres:postgres@192.168.1.17:5432/salutem
 ```
 
 Se não estiver, adicione ao `.env`:
 
 ```bash
-echo "DATABASE_URL_LOGISTICA=postgresql://postgres:postgres@192.168.1.178:5432/logistica" >> /opt/logistica_app/.env
+echo "DATABASE_URL_LOGISTICA=postgresql://postgres:postgres@192.168.1.172:5432/logistica" >> /opt/logistica_app/.env
 echo "DATABASE_URL_ERP=postgresql://postgres:postgres@192.168.1.17:5432/salutem" >> /opt/logistica_app/.env
 ```
 
@@ -185,7 +185,7 @@ pnpm dev
 
 ```bash
 # Executar migrations manualmente
-PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica < scripts/setup-postgres.sql
+PGPASSWORD=postgres psql -h 192.168.1.172 -U postgres -d logistica < scripts/setup-postgres.sql
 ```
 
 ### Problema 3: "Erro ao cadastrar motorista"
@@ -213,7 +213,7 @@ Use CPF e CNH diferentes ou limpe os dados:
 
 ```bash
 # CUIDADO: Isso deleta TODOS os motoristas!
-PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -c "DELETE FROM drivers;"
+PGPASSWORD=postgres psql -h 192.168.1.172 -U postgres -d logistica -c "DELETE FROM drivers;"
 ```
 
 ---

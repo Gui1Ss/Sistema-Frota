@@ -8,7 +8,7 @@ echo "DATABASE_URL_LOGISTICA: $DATABASE_URL_LOGISTICA"
 echo "DATABASE_URL_ERP: $DATABASE_URL_ERP"
 
 # Resultado esperado:
-# DATABASE_URL_LOGISTICA: postgresql://postgres:postgres@192.168.1.178:5432/logistica
+# DATABASE_URL_LOGISTICA: postgresql://postgres:postgres@192.168.1.172:5432/logistica
 # DATABASE_URL_ERP: postgresql://postgres:postgres@192.168.1.17:5432/salutem
 ```
 
@@ -60,11 +60,11 @@ curl http://localhost:3000/api/trpc/system.health
 }
 ```
 
-## 4. Executar Setup do PostgreSQL (Na VM 192.168.1.178)
+## 4. Executar Setup do PostgreSQL (Na VM 192.168.1.172)
 
 ```bash
 # SSH para a VM
-ssh usuario@192.168.1.178
+ssh usuario@192.168.1.172
 
 # Executar script SQL
 sudo -u postgres psql -f /caminho/para/logistica_app/scripts/setup-postgres.sql
@@ -88,7 +88,7 @@ sudo -u postgres psql -f /caminho/para/logistica_app/scripts/setup-postgres.sql
 - Mensagem: "Motorista cadastrado com sucesso"
 - Motorista aparece na lista
 
-## 6. Verificar Dados no PostgreSQL (Na VM 192.168.1.178)
+## 6. Verificar Dados no PostgreSQL (Na VM 192.168.1.172)
 
 ```bash
 # Conectar ao banco

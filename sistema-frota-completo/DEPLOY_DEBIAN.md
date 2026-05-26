@@ -2,7 +2,7 @@
 
 ## Visão Geral
 
-Este guia mostra como fazer deploy do projeto em um servidor Debian e testar com os bancos PostgreSQL reais (192.168.1.178 e 192.168.1.17).
+Este guia mostra como fazer deploy do projeto em um servidor Debian e testar com os bancos PostgreSQL reais (192.168.1.172 e 192.168.1.17).
 
 ## Pré-requisitos
 
@@ -80,7 +80,7 @@ cd logistica_app
 # Criar arquivo .env.local
 cat > .env.local << 'EOF'
 # Banco de Dados
-DATABASE_URL_LOGISTICA=postgresql://postgres:postgres@192.168.1.178:5432/logistica
+DATABASE_URL_LOGISTICA=postgresql://postgres:postgres@192.168.1.172:5432/logistica
 DATABASE_URL_ERP=postgresql://postgres:postgres@192.168.1.17:5432/salutem
 
 # Node
@@ -126,7 +126,7 @@ pnpm install
 
 ```bash
 # Testar conexão
-psql -U postgres -d logistica -h 192.168.1.178 -p 5432 -c "SELECT 1"
+psql -U postgres -d logistica -h 192.168.1.172 -p 5432 -c "SELECT 1"
 
 # Resultado esperado:
 #  ?column?
@@ -135,7 +135,7 @@ psql -U postgres -d logistica -h 192.168.1.178 -p 5432 -c "SELECT 1"
 # (1 row)
 
 # Se falhar, verificar:
-# - IP correto (192.168.1.178)
+# - IP correto (192.168.1.172)
 # - Porta 5432 aberta
 # - Usuário/senha corretos
 # - Banco "logistica" existe
@@ -165,12 +165,12 @@ node scripts/test-postgres-connection.mjs
 
 ```bash
 # Conectar ao banco Logística e executar setup
-psql -U postgres -d logistica -h 192.168.1.178 -f scripts/setup-postgres.sql
+psql -U postgres -d logistica -h 192.168.1.172 -f scripts/setup-postgres.sql
 
 # Resultado esperado: sem erros, tabelas criadas
 
 # Verificar se as tabelas foram criadas
-psql -U postgres -d logistica -h 192.168.1.178 -c "\dt"
+psql -U postgres -d logistica -h 192.168.1.172 -c "\dt"
 
 # Resultado esperado: deve listar motoristas, veiculos, rotas, entregas, etc.
 ```
@@ -251,7 +251,7 @@ http://seu_servidor:3000
 
 ```bash
 # Conectar ao banco Logística
-psql -U postgres -d logistica -h 192.168.1.178
+psql -U postgres -d logistica -h 192.168.1.172
 
 # Dentro do psql, consultar motoristas
 SELECT id, nome, cpf, telefone FROM motoristas;
@@ -270,10 +270,10 @@ SELECT id, nome, cpf, telefone FROM motoristas;
 **Solução:**
 ```bash
 # Verificar se consegue fazer ping
-ping 192.168.1.178
+ping 192.168.1.172
 
 # Verificar se porta 5432 está aberta
-nc -zv 192.168.1.178 5432
+nc -zv 192.168.1.172 5432
 
 # Se não conseguir, verificar firewall na VM PostgreSQL
 sudo ufw allow 5432/tcp
@@ -295,7 +295,7 @@ sudo ufw allow 5432/tcp
 **Solução:**
 ```bash
 # Criar banco manualmente
-psql -U postgres -h 192.168.1.178 -c "CREATE DATABASE logistica;"
+psql -U postgres -h 192.168.1.172 -c "CREATE DATABASE logistica;"
 ```
 
 ### Erro: relation "motoristas" does not exist
@@ -304,7 +304,7 @@ psql -U postgres -h 192.168.1.178 -c "CREATE DATABASE logistica;"
 **Solução:**
 ```bash
 # Executar setup
-psql -U postgres -d logistica -h 192.168.1.178 -f scripts/setup-postgres.sql
+psql -U postgres -d logistica -h 192.168.1.172 -f scripts/setup-postgres.sql
 ```
 
 ### Erro: timeout

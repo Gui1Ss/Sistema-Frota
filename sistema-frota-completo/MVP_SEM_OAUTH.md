@@ -105,13 +105,13 @@ Quando os bancos PostgreSQL estiverem disponíveis:
 
 ### 1. Configurar variáveis de ambiente
 ```bash
-export DATABASE_URL_LOGISTICA=postgresql://postgres:postgres@192.168.1.178:5432/logistica
+export DATABASE_URL_LOGISTICA=postgresql://postgres:postgres@192.168.1.172:5432/logistica
 export DATABASE_URL_ERP=postgresql://postgres:postgres@192.168.1.17:5432/salutem
 ```
 
 ### 2. Executar migrations
 ```bash
-psql -h 192.168.1.178 -U postgres -d logistica -f drizzle/migrations/0002_create_logistica_tables.sql
+psql -h 192.168.1.172 -U postgres -d logistica -f drizzle/migrations/0002_create_logistica_tables.sql
 ```
 
 ### 3. Testar endpoints

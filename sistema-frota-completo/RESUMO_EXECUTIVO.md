@@ -72,7 +72,7 @@ DATABASE_URL_ERP=postgresql://usuario:senha@seu-host:5432/salutem
 
 **Exemplo real:**
 ```bash
-DATABASE_URL_LOGISTICA=postgresql://postgres:senha123@192.168.1.178:5432/logistica
+DATABASE_URL_LOGISTICA=postgresql://postgres:senha123@192.168.1.172:5432/logistica
 DATABASE_URL_ERP=postgresql://postgres:senha123@192.168.1.17:5432/salutem
 ```
 

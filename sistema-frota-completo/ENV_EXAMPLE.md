@@ -9,7 +9,7 @@ cp ENV_EXAMPLE.md .env
 ## Banco de Dados - LOGÍSTICA (Banco próprio do sistema)
 
 ```
-DATABASE_URL_LOGISTICA=postgresql://postgres:postgres@192.168.1.178:5432/logistica
+DATABASE_URL_LOGISTICA=postgresql://postgres:postgres@192.168.1.172:5432/logistica
 ```
 
 ## Banco de Dados - ERP (Somente leitura)
@@ -96,7 +96,7 @@ ERP_DB_PASSWORD=postgres
 **Arquivo de exemplo completo para copiar:**
 
 ```bash
-DATABASE_URL_LOGISTICA=postgresql://postgres:postgres@192.168.1.178:5432/logistica
+DATABASE_URL_LOGISTICA=postgresql://postgres:postgres@192.168.1.172:5432/logistica
 DATABASE_URL_ERP=postgresql://postgres:postgres@192.168.1.17:5432/salutem
 NODE_ENV=development
 PORT=3000

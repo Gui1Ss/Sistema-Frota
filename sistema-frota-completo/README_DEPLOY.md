@@ -26,7 +26,7 @@ pnpm dev
 - Debian 11 ou 12
 - Acesso SSH ou terminal local
 - Conexão com os bancos PostgreSQL:
-  - 192.168.1.178:5432 (Banco Logística)
+  - 192.168.1.172:5432 (Banco Logística)
   - 192.168.1.17:5432 (Banco ERP)
 
 ## Instalação Passo a Passo
@@ -67,7 +67,7 @@ cd logistica_app
 ```bash
 # Criar arquivo .env.local
 cat > .env.local << 'EOF'
-DATABASE_URL_LOGISTICA=postgresql://postgres:postgres@192.168.1.178:5432/logistica
+DATABASE_URL_LOGISTICA=postgresql://postgres:postgres@192.168.1.172:5432/logistica
 DATABASE_URL_ERP=postgresql://postgres:postgres@192.168.1.17:5432/salutem
 NODE_ENV=production
 PORT=3000
@@ -86,10 +86,10 @@ pnpm install
 
 ```bash
 # Criar banco e tabelas
-psql -U postgres -d logistica -h 192.168.1.178 -f scripts/setup-postgres.sql
+psql -U postgres -d logistica -h 192.168.1.172 -f scripts/setup-postgres.sql
 
 # Verificar se foi criado
-psql -U postgres -d logistica -h 192.168.1.178 -c "\dt"
+psql -U postgres -d logistica -h 192.168.1.172 -c "\dt"
 ```
 
 ### 6. Testar Conexão
@@ -136,7 +136,7 @@ http://localhost:3000
 5. Verificar no PostgreSQL:
 
 ```bash
-psql -U postgres -d logistica -h 192.168.1.178 -c "SELECT * FROM motoristas;"
+psql -U postgres -d logistica -h 192.168.1.172 -c "SELECT * FROM motoristas;"
 ```
 
 ## Iniciar em Produção (PM2)
@@ -167,11 +167,11 @@ pm2 restart logistica
 
 ```bash
 # Testar conexão
-psql -U postgres -d logistica -h 192.168.1.178 -c "SELECT 1"
+psql -U postgres -d logistica -h 192.168.1.172 -c "SELECT 1"
 
 # Se falhar, verificar:
-ping 192.168.1.178
-nc -zv 192.168.1.178 5432
+ping 192.168.1.172
+nc -zv 192.168.1.172 5432
 
 # Se porta está bloqueada, na VM PostgreSQL:
 sudo ufw allow 5432/tcp
@@ -182,7 +182,7 @@ sudo systemctl restart postgresql
 
 ```bash
 # Executar migrations
-psql -U postgres -d logistica -h 192.168.1.178 -f scripts/setup-postgres.sql
+psql -U postgres -d logistica -h 192.168.1.172 -f scripts/setup-postgres.sql
 ```
 
 ### "password authentication failed"

@@ -5,7 +5,7 @@ Este guia descreve como testar o MVP completo do sistema de logística com os ba
 ## Pré-requisitos
 
 1. **Bancos PostgreSQL rodando:**
-   - Banco Logística: `192.168.1.178:5432/logistica`
+   - Banco Logística: `192.168.1.172:5432/logistica`
    - Banco ERP: `192.168.1.17:5432/salutem`
 
 2. **Credenciais:**
@@ -14,7 +14,7 @@ Este guia descreve como testar o MVP completo do sistema de logística com os ba
 
 3. **Variáveis de ambiente configuradas:**
    ```bash
-   export DATABASE_URL_LOGISTICA="postgresql://postgres:postgres@192.168.1.178:5432/logistica"
+   export DATABASE_URL_LOGISTICA="postgresql://postgres:postgres@192.168.1.172:5432/logistica"
    export DATABASE_URL_ERP="postgresql://postgres:postgres@192.168.1.17:5432/salutem"
    ```
 
@@ -22,7 +22,7 @@ Este guia descreve como testar o MVP completo do sistema de logística com os ba
 
 ### No Terminal (Logística):
 ```bash
-psql -h 192.168.1.178 -U postgres -d logistica -c "SELECT 1"
+psql -h 192.168.1.172 -U postgres -d logistica -c "SELECT 1"
 ```
 
 **Resultado esperado:** `1` (conexão bem-sucedida)
@@ -40,7 +40,7 @@ psql -h 192.168.1.17 -U postgres -d salutem -c "SELECT 1"
 
 ### Verificar tabelas no banco Logística:
 ```bash
-psql -h 192.168.1.178 -U postgres -d logistica -c "\dt"
+psql -h 192.168.1.172 -U postgres -d logistica -c "\dt"
 ```
 
 **Tabelas esperadas:**
@@ -52,7 +52,7 @@ psql -h 192.168.1.178 -U postgres -d logistica -c "\dt"
 
 ### Verificar estrutura da tabela drivers:
 ```bash
-psql -h 192.168.1.178 -U postgres -d logistica -c "\d drivers"
+psql -h 192.168.1.172 -U postgres -d logistica -c "\d drivers"
 ```
 
 **Colunas esperadas:**
@@ -499,27 +499,27 @@ Se o banco não estiver acessível, a resposta deve ser:
 
 ### Verificar motoristas cadastrados:
 ```bash
-psql -h 192.168.1.178 -U postgres -d logistica -c "SELECT id, nome, cpf, telefone, ativo FROM drivers;"
+psql -h 192.168.1.172 -U postgres -d logistica -c "SELECT id, nome, cpf, telefone, ativo FROM drivers;"
 ```
 
 ### Verificar veículos cadastrados:
 ```bash
-psql -h 192.168.1.178 -U postgres -d logistica -c "SELECT id, placa, modelo, tipo, ativo FROM vehicles;"
+psql -h 192.168.1.172 -U postgres -d logistica -c "SELECT id, placa, modelo, tipo, ativo FROM vehicles;"
 ```
 
 ### Verificar rotas criadas:
 ```bash
-psql -h 192.168.1.178 -U postgres -d logistica -c "SELECT id, driver_id, vehicle_id, data_rota, status FROM routes;"
+psql -h 192.168.1.172 -U postgres -d logistica -c "SELECT id, driver_id, vehicle_id, data_rota, status FROM routes;"
 ```
 
 ### Verificar entregas:
 ```bash
-psql -h 192.168.1.178 -U postgres -d logistica -c "SELECT id, route_id, numero_pedido, status FROM deliveries;"
+psql -h 192.168.1.172 -U postgres -d logistica -c "SELECT id, route_id, numero_pedido, status FROM deliveries;"
 ```
 
 ### Verificar logs do sistema:
 ```bash
-psql -h 192.168.1.178 -U postgres -d logistica -c "SELECT id, modulo, acao, timestamp FROM operation_logs ORDER BY timestamp DESC LIMIT 10;"
+psql -h 192.168.1.172 -U postgres -d logistica -c "SELECT id, modulo, acao, timestamp FROM operation_logs ORDER BY timestamp DESC LIMIT 10;"
 ```
 
 ---
@@ -621,7 +621,7 @@ node scripts/test-mvp-complete.mjs
 
 ### Limpar dados de teste (CUIDADO!):
 ```bash
-psql -h 192.168.1.178 -U postgres -d logistica -c "DELETE FROM deliveries; DELETE FROM routes; DELETE FROM drivers; DELETE FROM vehicles;"
+psql -h 192.168.1.172 -U postgres -d logistica -c "DELETE FROM deliveries; DELETE FROM routes; DELETE FROM drivers; DELETE FROM vehicles;"
 ```
 
 ### Verificar logs do servidor:

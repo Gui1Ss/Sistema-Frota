@@ -7,7 +7,7 @@ Ao cadastrar motorista, aparece erro: "Banco de dados não disponível. Verifiqu
 Uma ou mais das seguintes situações:
 1. Variável de ambiente `DATABASE_URL_LOGISTICA` não configurada ou incorreta
 2. Banco PostgreSQL não está acessível na rede (firewall, porta bloqueada)
-3. Banco `logistica` não existe em 192.168.1.178
+3. Banco `logistica` não existe em 192.168.1.172
 4. Usuário `postgres` não tem permissão no banco
 5. Migrations não foram executadas
 6. Tabela `motoristas` não existe
@@ -23,18 +23,18 @@ Uma ou mais das seguintes situações:
 echo $DATABASE_URL_LOGISTICA
 
 # Resultado esperado:
-# postgresql://postgres:postgres@192.168.1.178:5432/logistica
+# postgresql://postgres:postgres@192.168.1.172:5432/logistica
 ```
 
 Se não aparecer nada, configure:
 ```bash
-export DATABASE_URL_LOGISTICA="postgresql://postgres:postgres@192.168.1.178:5432/logistica"
+export DATABASE_URL_LOGISTICA="postgresql://postgres:postgres@192.168.1.172:5432/logistica"
 export DATABASE_URL_ERP="postgresql://postgres:postgres@192.168.1.17:5432/salutem"
 ```
 
-### Passo 2: Testar Conexão com PostgreSQL (VM 192.168.1.178)
+### Passo 2: Testar Conexão com PostgreSQL (VM 192.168.1.172)
 
-**Na VM com PostgreSQL (192.168.1.178):**
+**Na VM com PostgreSQL (192.168.1.172):**
 
 ```bash
 # Testar se PostgreSQL está rodando
@@ -53,7 +53,7 @@ sudo systemctl start postgresql
 
 ### Passo 3: Conectar ao PostgreSQL Localmente
 
-**Na VM 192.168.1.178:**
+**Na VM 192.168.1.172:**
 
 ```bash
 # Conectar como usuário postgres
@@ -72,7 +72,7 @@ CREATE DATABASE logistica;
 
 ### Passo 4: Verificar Permissões do Usuário Postgres
 
-**Na VM 192.168.1.178:**
+**Na VM 192.168.1.172:**
 
 ```bash
 # Conectar como postgres
@@ -93,7 +93,7 @@ sudo -u postgres psql -d logistica
 
 ### Passo 5: Executar Migrations
 
-**Na VM 192.168.1.178, no diretório do projeto:**
+**Na VM 192.168.1.172, no diretório do projeto:**
 
 ```bash
 # Navegar para o diretório do projeto
@@ -120,7 +120,7 @@ psql -U postgres -d logistica -h 127.0.0.1 -c "\dt"
 sudo apt-get install postgresql-client
 
 # Testar conexão
-psql -U postgres -d logistica -h 192.168.1.178 -p 5432 -c "SELECT 1"
+psql -U postgres -d logistica -h 192.168.1.172 -p 5432 -c "SELECT 1"
 
 # Resultado esperado:
 #  ?column?
@@ -136,7 +136,7 @@ psql -U postgres -d logistica -h 192.168.1.178 -p 5432 -c "SELECT 1"
 
 ### Passo 7: Verificar Configuração do PostgreSQL para Aceitar Conexões Remotas
 
-**Na VM 192.168.1.178:**
+**Na VM 192.168.1.172:**
 
 ```bash
 # Editar arquivo de configuração
@@ -213,7 +213,7 @@ curl http://localhost:3000/api/trpc/system.health
 
 ### Passo 10: Verificar Dados no PostgreSQL
 
-**Na VM 192.168.1.178:**
+**Na VM 192.168.1.172:**
 
 ```bash
 # Conectar ao banco
@@ -254,12 +254,12 @@ sudo -u postgres psql -c "CREATE DATABASE logistica;"
 
 ### timeout
 **Causa:** Firewall bloqueando, máquina offline ou DNS não resolvendo
-**Solução:** Verificar conectividade com `ping 192.168.1.178`
+**Solução:** Verificar conectividade com `ping 192.168.1.172`
 
 ## Checklist Final
 
 - [ ] DATABASE_URL_LOGISTICA configurado corretamente
-- [ ] PostgreSQL rodando em 192.168.1.178
+- [ ] PostgreSQL rodando em 192.168.1.172
 - [ ] Banco `logistica` existe
 - [ ] Migrations foram executadas
 - [ ] Tabela `motoristas` existe

@@ -6,7 +6,7 @@
 
 ```bash
 # Conectar ao PostgreSQL e executar:
-psql -h 192.168.1.178 -U postgres -d logistica -f drizzle/migrations/0002_create_logistica_tables.sql
+psql -h 192.168.1.172 -U postgres -d logistica -f drizzle/migrations/0002_create_logistica_tables.sql
 ```
 
 ### 2. Iniciar o Sistema
@@ -331,7 +331,7 @@ SELECT * FROM operationLogs ORDER BY createdAt DESC LIMIT 10;
 
 ### Testar conexão com banco Logística
 ```bash
-psql -h 192.168.1.178 -U postgres -d logistica -c "SELECT 1;"
+psql -h 192.168.1.172 -U postgres -d logistica -c "SELECT 1;"
 ```
 
 ### Testar conexão com banco ERP
@@ -367,7 +367,7 @@ psql -h 192.168.1.17 -U postgres -d salutem -c "SELECT 1;"
 - Testar conexão com `psql`
 
 ### Erro: "Tabelas não existem"
-- Executar migration: `psql -h 192.168.1.178 -U postgres -d logistica -f drizzle/migrations/0002_create_logistica_tables.sql`
+- Executar migration: `psql -h 192.168.1.172 -U postgres -d logistica -f drizzle/migrations/0002_create_logistica_tables.sql`
 
 ### Erro: "Pedido não encontrado no ERP"
 - Verificar se o número do pedido existe no banco ERP

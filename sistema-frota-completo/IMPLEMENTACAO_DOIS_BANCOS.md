@@ -9,7 +9,7 @@
 ## 🎯 Objetivo
 
 Implementar suporte para **dois bancos PostgreSQL separados**:
-1. **Banco Logística** (192.168.1.178:5432/logistica) - Banco próprio do sistema
+1. **Banco Logística** (192.168.1.172:5432/logistica) - Banco próprio do sistema
 2. **Banco ERP** (192.168.1.17:5432/salutem) - Somente leitura para consultas
 
 ---
@@ -206,7 +206,7 @@ grep -r "postgres" package.json
 ```bash
 # Verificar variáveis de ambiente
 echo $DATABASE_URL_LOGISTICA
-# postgresql://postgres:postgres@192.168.1.178:5432/logistica
+# postgresql://postgres:postgres@192.168.1.172:5432/logistica
 
 echo $DATABASE_URL_ERP
 # postgresql://postgres:postgres@192.168.1.17:5432/salutem
@@ -282,10 +282,10 @@ await logOperation({
 
 ### Problema: "Erro ao conectar ao banco Logística"
 **Solução:**
-1. Verificar se PostgreSQL está rodando em 192.168.1.178:5432
+1. Verificar se PostgreSQL está rodando em 192.168.1.172:5432
 2. Verificar credenciais (usuario: postgres, senha: postgres)
 3. Verificar se banco "logistica" existe
-4. Testar: `psql postgresql://postgres:postgres@192.168.1.178:5432/logistica`
+4. Testar: `psql postgresql://postgres:postgres@192.168.1.172:5432/logistica`
 
 ### Problema: "ERP indisponível"
 **Solução:**

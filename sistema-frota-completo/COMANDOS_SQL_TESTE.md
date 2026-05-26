@@ -7,15 +7,15 @@ Use estes comandos para testar o banco de dados do seu servidor Debian.
 ## 🔗 Conectar ao Banco Logística
 
 ```bash
-PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica
+PGPASSWORD=postgres psql -h 192.168.1.172 -U postgres -d logistica
 ```
 
 Ou com arquivo de senha:
 
 ```bash
-echo "192.168.1.178:5432:logistica:postgres:postgres" > ~/.pgpass
+echo "192.168.1.172:5432:logistica:postgres:postgres" > ~/.pgpass
 chmod 600 ~/.pgpass
-psql -h 192.168.1.178 -U postgres -d logistica
+psql -h 192.168.1.172 -U postgres -d logistica
 ```
 
 ---
@@ -301,25 +301,25 @@ SELECT * FROM nfenotas LIMIT 10;
 ### Testar conexão Logística
 
 ```bash
-PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -c "SELECT 1;"
+PGPASSWORD=postgres psql -h 192.168.1.172 -U postgres -d logistica -c "SELECT 1;"
 ```
 
 ### Contar motoristas
 
 ```bash
-PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -t -c "SELECT COUNT(*) FROM drivers;"
+PGPASSWORD=postgres psql -h 192.168.1.172 -U postgres -d logistica -t -c "SELECT COUNT(*) FROM drivers;"
 ```
 
 ### Listar motoristas
 
 ```bash
-PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -c "SELECT id, nome, cpf, telefone FROM drivers;"
+PGPASSWORD=postgres psql -h 192.168.1.172 -U postgres -d logistica -c "SELECT id, nome, cpf, telefone FROM drivers;"
 ```
 
 ### Executar script SQL
 
 ```bash
-PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -f scripts/setup-logistica-correct.sql
+PGPASSWORD=postgres psql -h 192.168.1.172 -U postgres -d logistica -f scripts/setup-logistica-correct.sql
 ```
 
 ---
@@ -330,19 +330,19 @@ PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -f scripts/se
 #!/bin/bash
 
 echo "1. Conectando ao banco..."
-PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -c "SELECT 1;" || exit 1
+PGPASSWORD=postgres psql -h 192.168.1.172 -U postgres -d logistica -c "SELECT 1;" || exit 1
 
 echo "2. Contando motoristas..."
-PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -t -c "SELECT COUNT(*) FROM drivers;"
+PGPASSWORD=postgres psql -h 192.168.1.172 -U postgres -d logistica -t -c "SELECT COUNT(*) FROM drivers;"
 
 echo "3. Listando motoristas..."
-PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -c "SELECT id, nome, cpf FROM drivers LIMIT 5;"
+PGPASSWORD=postgres psql -h 192.168.1.172 -U postgres -d logistica -c "SELECT id, nome, cpf FROM drivers LIMIT 5;"
 
 echo "4. Contando veículos..."
-PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -t -c "SELECT COUNT(*) FROM vehicles;"
+PGPASSWORD=postgres psql -h 192.168.1.172 -U postgres -d logistica -t -c "SELECT COUNT(*) FROM vehicles;"
 
 echo "5. Contando rotas..."
-PGPASSWORD=postgres psql -h 192.168.1.178 -U postgres -d logistica -t -c "SELECT COUNT(*) FROM routes;"
+PGPASSWORD=postgres psql -h 192.168.1.172 -U postgres -d logistica -t -c "SELECT COUNT(*) FROM routes;"
 
 echo "✅ Teste concluído!"
 ```

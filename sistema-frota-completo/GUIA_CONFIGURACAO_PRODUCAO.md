@@ -49,7 +49,7 @@ Edite o arquivo `.env` com suas credenciais reais:
 DATABASE_URL_LOGISTICA=postgresql://usuario:senha@host:5432/nome_banco
 
 # Exemplo:
-# DATABASE_URL_LOGISTICA=postgresql://postgres:senha123@192.168.1.178:5432/logistica
+# DATABASE_URL_LOGISTICA=postgresql://postgres:senha123@192.168.1.172:5432/logistica
 
 # ============================================
 # BANCO DE DADOS - ERP (Somente Leitura)
