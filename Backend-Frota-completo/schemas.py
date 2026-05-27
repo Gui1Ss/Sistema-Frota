@@ -190,3 +190,20 @@ class DeliveryUpdate(BaseModel):
 class Delivery(DeliveryBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
+
+class DeliveryApp(BaseModel):
+    id: int
+    routeid: int
+    ordernumber: str
+    clientname: str
+    driver_name: str
+    vehicle_name: str
+    status: str
+    address: str
+    address_number: str
+    city: str
+    state: str
+    zipcode: str
+    latitude: float
+    longitude: float
+    createdat: Optional[datetime] = None

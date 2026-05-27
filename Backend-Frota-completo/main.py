@@ -5,9 +5,9 @@ import models, schemas, crud
 from database import engine, get_db
 import requests
 import json
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, select, func
 from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta,date
 
 apikey = 'citrix21'
 
@@ -51,9 +51,49 @@ app.add_middleware(
 # --- WHATSAPP MESSAGES ---
 
 @app.post("/teste/")
-def send_message():
+def send_message(db: Session = Depends(get_db)):
     mensagem("leandro", "5511948447544", "Olá, Teste de API!")
-    return "OK"
+    # stmt = select(models.Driver).join(models.Route, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == "12345678902")
+    # stmt2 = select(func.count()).select_from(models.Route).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == "12345678902")
+    # res = db.execute(stmt)
+    # doing = db.query(models.Delivery).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == "12345678902").where(models.Delivery.deliveredat.is_(None)).count()
+    # did = db.query(models.Delivery).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == "12345678902").where(models.Delivery.deliveredat.is_not(None)).count()
+    # rota = db.query(models.Route.id, models.Route.createdat).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == "12345678902").where(models.Route.status == 'in_progress').first()
+    # # res = db.query(models.Route).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == "12345678902").count()
+    # # print(stmt2)
+    # # json_out = json.dumps(res, indent=4)
+    # print(rota)
+    # return {
+    #     "emAndamento": doing,
+    #     "concluidas": did,
+    #     "rotaAtual": {
+    #         "id": rota[0],
+    #         "createdat": rota[1]
+    #     }
+    # }
+
+
+# --- APP DASHBOARD ---
+
+@app.get("/app/dashboard/{cpf}")
+def get_app_dashboard(cpf: int, db: Session = Depends(get_db)):
+    doing = db.query(models.Delivery).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == "12345678902").where(models.Delivery.deliveredat.is_(None)).count()
+    did = db.query(models.Delivery).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == "12345678902").where(models.Delivery.deliveredat.is_not(None)).count()
+    rota = db.query(models.Route.id, models.Route.createdat).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == "12345678902").where(models.Route.status == 'in_progress').first()
+    # res = db.query(models.Route).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == "12345678902").count()
+    # print(stmt2)
+    # json_out = json.dumps(res, indent=4)
+    print(rota)
+    return {
+        "emAndamento": doing,
+        "concluidas": did,
+        "rotaAtual": {
+            "id": rota[0],
+            "createdat": rota[1]
+        }
+    }
+
+
 
 
 
@@ -190,6 +230,10 @@ def create_route(route: schemas.RouteWeb, db: Session = Depends(get_db)):
 def read_routes(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return crud.get_items(db, models.Route, skip=skip, limit=limit)
 
+@app.get("/routes/{id}", response_model=List[schemas.Route])
+def read_routes(id: int, db: Session = Depends(get_db)):
+    return crud.get_item(db, model=models.Route, item_id=id)
+
 @app.put("/routes/{route_id}", response_model=schemas.Route)
 def update_route(route_id: int, route: schemas.RouteUpdate, db: Session = Depends(get_db)):
     return crud.update_route(db, route_id, route)
@@ -281,6 +325,32 @@ def create_delivery(delivery: schemas.DeliveryCreate, db: Session = Depends(get_
 @app.get("/deliveries/", response_model=List[schemas.Delivery])
 def read_deliveries(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return crud.get_items(db, models.Delivery, skip=skip, limit=limit)
+
+@app.get("/delivery/{delivery}", response_model=schemas.DeliveryApp)
+def deliveries_app(delivery: str, db: Session = Depends(get_db)):
+    # print(datetime.strftime(date, "%Y-%m-%d %H:%M:%S.000-03 "))
+    # print(date+" 0:00:0.000-03")
+    # stmt= select(models.Delivery.id, models.Delivery.routeid, models.Delivery.ordernumber, models.Delivery.clientname,models.Driver.name, models.Vehicle.name, models.Delivery.status, models.RouteItem.address, models.RouteItem.address_number, models.RouteItem.city, models.RouteItem.state, models.RouteItem.zipcode,models.RouteItem.latitude, models.RouteItem.longitude).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.RouteItem, models.RouteItem.ordernumber == models.Delivery.ordernumber).join(models.Driver, models.Driver.id == models.Route.driverid).join(models.Vehicle, models.Vehicle.id == models.Route.vehicleid).where(models.Driver.cpf == driver).where(models.Delivery.deliveredat>date)
+    # print(stmt)
+    return db.query(models.Delivery.id, models.Delivery.routeid, models.Delivery.ordernumber, models.Delivery.clientname,models.Driver.name.label("driver_name"), models.Vehicle.name.label("vehicle_name"), models.Delivery.status, models.RouteItem.address, models.RouteItem.address_number, models.RouteItem.city, models.RouteItem.state, models.RouteItem.zipcode,models.RouteItem.latitude, models.RouteItem.longitude, models.Route.createdat).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.RouteItem, models.RouteItem.ordernumber == models.Delivery.ordernumber).join(models.Driver, models.Driver.id == models.Route.driverid).join(models.Vehicle, models.Vehicle.id == models.Route.vehicleid).where(models.Delivery.id == delivery).first();
+
+@app.get("/deliveries/{driver}", response_model=List[schemas.DeliveryApp])
+def deliveries_app(driver: str, db: Session = Depends(get_db)):
+    # print(datetime.strftime(date, "%Y-%m-%d %H:%M:%S.000-03 "))
+    # print(date+" 0:00:0.000-03")
+    # stmt= select(models.Delivery.id, models.Delivery.routeid, models.Delivery.ordernumber, models.Delivery.clientname,models.Driver.name, models.Vehicle.name, models.Delivery.status, models.RouteItem.address, models.RouteItem.address_number, models.RouteItem.city, models.RouteItem.state, models.RouteItem.zipcode,models.RouteItem.latitude, models.RouteItem.longitude).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.RouteItem, models.RouteItem.ordernumber == models.Delivery.ordernumber).join(models.Driver, models.Driver.id == models.Route.driverid).join(models.Vehicle, models.Vehicle.id == models.Route.vehicleid).where(models.Driver.cpf == driver).where(models.Delivery.deliveredat>date)
+    # print(stmt)
+    return db.query(models.Delivery.id, models.Delivery.routeid, models.Delivery.ordernumber, models.Delivery.clientname,models.Driver.name.label("driver_name"), models.Vehicle.name.label("vehicle_name"), models.Delivery.status, models.RouteItem.address, models.RouteItem.address_number, models.RouteItem.city, models.RouteItem.state, models.RouteItem.zipcode,models.RouteItem.latitude, models.RouteItem.longitude).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.RouteItem, models.RouteItem.ordernumber == models.Delivery.ordernumber).join(models.Driver, models.Driver.id == models.Route.driverid).join(models.Vehicle, models.Vehicle.id == models.Route.vehicleid).where(models.Driver.cpf == driver).all();
+
+@app.get("/deliveries/finish/{driver}/{date}", response_model=List[schemas.DeliveryApp])
+def deliveries_app_historico(driver: str, date: str, db: Session = Depends(get_db)):
+    # print(datetime.strftime(date, "%Y-%m-%d %H:%M:%S.000-03 "))
+    # print(date+" 0:00:0.000-03")
+    # stmt= select(models.Delivery.id, models.Delivery.routeid, models.Delivery.ordernumber, models.Delivery.clientname,models.Driver.name, models.Vehicle.name, models.Delivery.status, models.RouteItem.address, models.RouteItem.address_number, models.RouteItem.city, models.RouteItem.state, models.RouteItem.zipcode,models.RouteItem.latitude, models.RouteItem.longitude).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.RouteItem, models.RouteItem.ordernumber == models.Delivery.ordernumber).join(models.Driver, models.Driver.id == models.Route.driverid).join(models.Vehicle, models.Vehicle.id == models.Route.vehicleid).where(models.Driver.cpf == driver).where(models.Delivery.deliveredat>date)
+    # print(stmt)
+    date_obj = datetime.strptime(date, "%Y-%m-%d")
+    tomorrow = date_obj + timedelta(days=1)
+    return db.query(models.Delivery.id, models.Delivery.routeid, models.Delivery.ordernumber, models.Delivery.clientname,models.Driver.name.label("driver_name"), models.Vehicle.name.label("vehicle_name"), models.Delivery.status, models.RouteItem.address, models.RouteItem.address_number, models.RouteItem.city, models.RouteItem.state, models.RouteItem.zipcode,models.RouteItem.latitude, models.RouteItem.longitude).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.RouteItem, models.RouteItem.ordernumber == models.Delivery.ordernumber).join(models.Driver, models.Driver.id == models.Route.driverid).join(models.Vehicle, models.Vehicle.id == models.Route.vehicleid).where(models.Driver.cpf == driver).where(models.Delivery.deliveredat>date_obj).where(models.Delivery.deliveredat < tomorrow).all();
 
 @app.put("/deliveries/{delivery_id}", response_model=schemas.Delivery)
 def update_delivery(delivery_id: int, delivery: schemas.DeliveryUpdate, db: Session = Depends(get_db)):

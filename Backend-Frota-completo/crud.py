@@ -65,6 +65,10 @@ def update_driver(db: Session, driver_id: int, driver: schemas.DriverUpdate):
         db.refresh(db_driver)
     return db_driver
 
+# def get_driver_app_dashboard(db: Session, cpf: str):
+#     db.
+
+
 # --- Vehicles ---
 def create_vehicle(db: Session, vehicle: schemas.VehicleCreate):
     db_vehicle = models.Vehicle(**vehicle.model_dump())
