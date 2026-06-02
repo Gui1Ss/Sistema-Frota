@@ -132,6 +132,16 @@ def update_route_item(db: Session, item_id: int, item: schemas.RouteItemUpdate):
         db.refresh(db_item)
     return db_item
 
+def update_route_item_for_order_number(db: Session, item_id: str, item: schemas.RouteItemUpdate):
+    db_item = db.query(models.RouteItem).where(models.RouteItem.ordernumber == item_id).first()
+    if db_item:
+        for key, value in item.model_dump(exclude_unset=True).items():
+            setattr(db_item, key, value)
+        db.commit()
+        db.refresh(db_item)
+    return db_item
+
+
 # --- GPS Tracking ---
 def create_gps_tracking(db: Session, tracking: schemas.GPSTrackingCreate):
     db_tracking = models.GPSTracking(**tracking.model_dump())

@@ -132,10 +132,15 @@ class RouteWeb(BaseModel):
     route: RouteBase
 
 class RouteItemUpdate(BaseModel):
-    routeid: Optional[int] = None
-    ordernumber: Optional[str] = None
-    sequence: Optional[int] = None
-    status: Optional[str] = None
+    status: Optional[str] = "pending"
+    address: Optional[str] = None
+    neighborhood: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zipcode: Optional[str] = None
+    address_number: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 class RouteItem(RouteItemBase):
     id: int

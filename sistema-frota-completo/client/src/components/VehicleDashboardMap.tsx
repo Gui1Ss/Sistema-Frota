@@ -3,6 +3,7 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui/card";
+// import Openrouteservice from 'openrouteservice-js'
 
 interface Vehicle {
   id: number;
@@ -49,6 +50,7 @@ export default function VehicleDashboardMap() {
   const [vehicles, setVehicles] = useState<RouteData[]>([]);
   const [loading, setLoading] = useState(true);
   const [mapError, setMapError] = useState<string | null>(null);
+  // const orsDirections = new Openrouteservice.Directions({ api_key: "XYZ"});
 
   // Buscar dados do mapa
   useEffect(() => {
@@ -103,76 +105,195 @@ export default function VehicleDashboardMap() {
     const currentMap = map.current;
     if (!currentMap) return;
 
-    const updateMarkers = () => {
-      // Limpar marcadores antigos
+    const updateMarkers = async () => {
       markersRef.current.forEach((marker) => marker.remove());
       markersRef.current = [];
 
       const bounds = new maplibregl.LngLatBounds();
       let hasCoords = false;
 
-      vehicles.forEach((route) => {
+      for (const route of vehicles) {
         const { current_location, vehicle, driver, orders, color } = route;
-        const routeColor = color || "#3b82f6"; // Fallback para azul
+
+        const routeColor = color || "#3b82f6";
 
         if (current_location.latitude && current_location.longitude) {
-          // Veículo
           const vEl = document.createElement("div");
-          vEl.innerHTML = `<div style="background:${routeColor};width:30px;height:30px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 5px rgba(0,0,0,0.4);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
-          </div>`;
 
-          const vPopup = new maplibregl.Popup({ offset: 25 }).setHTML(`
-            <div style="padding:5px;">
-              <b style="display:block;border-bottom:1px solid #ccc;margin-bottom:5px;">${vehicle.name}</b>
-              <small>Placa: ${vehicle.plate}<br/>Motorista: ${driver.name}</small>
+          vEl.innerHTML = `
+            <div style="
+              background:${routeColor};
+              width:30px;
+              height:30px;
+              border-radius:50%;
+              border:2px solid #fff;
+              display:flex;
+              align-items:center;
+              justify-content:center;
+            ">
+               <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="#fff"
+                            stroke-width="2"
+                        >
+                            <rect
+                                x="1"
+                                y="3"
+                                width="15"
+                                height="13"
+                            ></rect>
+                            <polygon
+                                points="16 8 20 8 23 11 23 16 16 16 16 8"
+                            ></polygon>
+                            <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                            <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                        </svg>
             </div>
-          `);
+          `;
 
-          const vMarker = new maplibregl.Marker({ element: vEl })
-            .setLngLat([current_location.longitude, current_location.latitude])
-            .setPopup(vPopup)
+          const vMarker = new maplibregl.Marker({
+            element: vEl,
+          })
+            .setLngLat([
+              current_location.longitude,
+              current_location.latitude,
+            ])
             .addTo(currentMap);
 
           markersRef.current.push(vMarker);
-          bounds.extend([current_location.longitude, current_location.latitude]);
+
+          bounds.extend([
+            current_location.longitude,
+            current_location.latitude,
+          ]);
+
           hasCoords = true;
 
-          // Pedidos
-          orders.forEach((order) => {
-            if (!order.latitude || !order.longitude) return;
-            const pEl = document.createElement("div");
-            pEl.innerHTML = `<div style="background:${routeColor};width:20px;height:20px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 4px rgba(0,0,0,0.3);">
-              <span style="color:#fff;font-size:10px;font-weight:bold;">P</span>
-            </div>`;
+          orders.forEach(async (order, i ,array) => {
+            if (!order.latitude || !order.longitude || order.status == "entregue") return;
 
-            const pPopup = new maplibregl.Popup({ offset: 15 }).setHTML(`
-              <div style="padding:5px;">
-                <b>Pedido #${order.order_number}</b><br/>
-                <small>${order.address}</small>
-              </div>
+            const pEl = document.createElement("div");
+
+            pEl.innerHTML = `
+                <div
+                    style="
+                        background:${routeColor};
+                        width:20px;
+                        height:20px;
+                        border-radius:50%;
+                        border:2px solid #fff;
+                        display:flex;
+                        align-items:center;
+                        justify-content:center;
+                        box-shadow:0 2px 4px rgba(0,0,0,0.3);
+                    "
+                >
+                    <span
+                        style="
+                            color:#fff;
+                            font-size:10px;
+                            font-weight:bold;
+                        "
+                    >
+                        P
+                    </span>
+                </div>
+            `;
+
+            const pPopup = new maplibregl.Popup({
+                offset: 15
+            }).setHTML(`
+                <div style="padding:5px;">
+                    <b>Pedido #${order.order_number}</b><br/>
+                    <small>${order.address}</small>
+                </div>
             `);
 
-            const pMarker = new maplibregl.Marker({ element: pEl })
-              .setLngLat([order.longitude, order.latitude])
-              .setPopup(pPopup)
-              .addTo(currentMap);
+            const pMarker = new maplibregl.Marker({
+                element: pEl
+            })
+                .setLngLat([
+                    order.longitude,
+                    order.latitude
+                ])
+                .setPopup(pPopup)
+                .addTo(currentMap);
 
             markersRef.current.push(pMarker);
-            bounds.extend([order.longitude, order.latitude]);
+
+            bounds.extend([
+                order.longitude,
+                order.latitude
+            ]);
+
+            let routecoord;
+
+            
+            try {
+              let coordinates: [[current_location.longitude, current_location.latitude]]
+              const response = await fetch(
+                "https://api.openrouteservice.org/v2/directions/driving-car/geojson",
+                {
+                  method: "POST",
+                  headers: {
+                    Authorization: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImNhYjZiZTQ3OTgzYTQ4YTRhYzcxMmYyMTNjOTY3MmQ2IiwiaCI6Im11cm11cjY0In0=",
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    coordinates
+                  }),
+                }
+              );
+
+              routecoord = await response.json();
+            } catch (e) {
+              console.error(e);
+            }
+
+            const routeId = `route-${vehicle.id}`;
+
+            const source = map.current?.getSource(routeId);
+
+            if (!source) {
+              map.current?.addSource(routeId, {
+                type: "geojson",
+                data: routecoord,
+              });
+
+              map.current?.addLayer({
+                id: routeId,
+                type: "line",
+                source: routeId,
+                paint: {
+                  "line-color": color,
+                  "line-width": 5,
+                },
+              });
+            } else {
+              (source as maplibregl.GeoJSONSource).setData(routecoord);
+            }
+
           });
         }
-      });
-
-      if (hasCoords) {
-        currentMap.fitBounds(bounds, { padding: 50, maxZoom: 15 });
       }
-    };
+
+          if (hasCoords) {
+            currentMap.fitBounds(bounds, {
+              padding: 50,
+              maxZoom: 15,
+            });
+          }
+        };
 
     if (currentMap.loaded()) {
       updateMarkers();
     } else {
-      currentMap.once('load', updateMarkers);
+      currentMap.once("load", () => {
+        updateMarkers();
+      });
     }
   }, [vehicles]);
 

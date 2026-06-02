@@ -49,7 +49,7 @@ export default function EntregaPage() {
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case "pendente": return "bg-yellow-100 text-yellow-700";
-      case "em rota": return "bg-blue-100 text-blue-700";
+      case "em_rota": return "bg-blue-100 text-blue-700";
       case "entregue": return "bg-green-100 text-green-700";
       case "nao entregue": return "bg-red-100 text-red-700";
       default: return "bg-slate-100 text-slate-700";
@@ -113,7 +113,7 @@ export default function EntregaPage() {
                       <td className="px-6 py-4 text-slate-700">{delivery.clientname || "N/A"}</td>
                       <td className="px-6 py-4">
                         <Badge className={`${getStatusColor(delivery.status)} border-none shadow-none`}>
-                          {delivery.status}
+                          {delivery.status == "em_rota" ? "Em rota" : delivery.status == "entregue" ? "Entregue" : "erro"}
                         </Badge>
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-600">

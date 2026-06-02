@@ -109,6 +109,10 @@ def create_driver(driver: schemas.DriverCreate, db: Session = Depends(get_db)):
 def read_drivers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return crud.get_items(db, models.Driver, skip=skip, limit=limit)
 
+@app.get("/drivers/livre", response_model=List[schemas.Driver])
+def read_drivers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return db.query(models.Driver).join(models.Route, models.Route.driverid == models.Driver.id).where(models.Route.status == "entregue")
+
 @app.get("/drivers/{driver_id}", response_model=schemas.Driver)
 def read_driver(driver_id: int, db: Session = Depends(get_db)):
     db_driver = crud.get_item(db, models.Driver, driver_id)
@@ -138,6 +142,10 @@ def create_vehicle(vehicle: schemas.VehicleCreate, db: Session = Depends(get_db)
 @app.get("/vehicles/", response_model=List[schemas.Vehicle])
 def read_vehicles(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return crud.get_items(db, models.Vehicle, skip=skip, limit=limit)
+
+@app.get("/vehicles/livres", response_model=List[schemas.Vehicle])
+def read_vehicles(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return db.query(models.Vehicle).join(models.Route, models.Route.vehicleid == models.Vehicle.id).where(models.Route.status == "entregue")
 
 @app.put("/vehicles/{vehicle_id}", response_model=schemas.Vehicle)
 def update_vehicle(vehicle_id: int, vehicle: schemas.VehicleUpdate, db: Session = Depends(get_db)):
@@ -190,7 +198,7 @@ def create_route(route: schemas.RouteWeb, db: Session = Depends(get_db)):
                         "limit": 1
                     }
                     headers = { "User-Agent": "SistemaFrota/1.0" }
-                    
+                    print(parametros)
                     res_geo = requests.get(url_nominatim, params=parametros, headers=headers)
                     resultado = res_geo.json()
                     
@@ -255,6 +263,15 @@ def delete_route(route_id: int, db: Session = Depends(get_db)):
     crud.delete_item(db, models.Route, route_id)
     return {"message": "Rota excluída com sucesso"}
 
+
+
+
+
+# --- ROUTE ITEMS ENDPOINTS ---
+
+
+
+
 @app.delete("/route-items/{item_id}")
 def delete_route_item(item_id: int, db: Session = Depends(get_db)):
     item = db.query(models.RouteItem).filter(models.RouteItem.id == item_id).first()
@@ -278,11 +295,6 @@ def delete_route_item(item_id: int, db: Session = Depends(get_db)):
     return {"message": "Pedido removido da rota"}
 
 
-
-# --- ROUTE ITEMS ENDPOINTS ---
-
-
-
 @app.post("/route-items/", response_model=schemas.RouteItem)
 def create_route_item(item: schemas.RouteItemCreate, db: Session = Depends(get_db)):
     return crud.create_route_item(db=db, item=item)
@@ -290,6 +302,16 @@ def create_route_item(item: schemas.RouteItemCreate, db: Session = Depends(get_d
 @app.get("/route-items/", response_model=List[schemas.RouteItem])
 def read_route_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return crud.get_items(db, models.RouteItem, skip=skip, limit=limit)
+
+
+@app.get("/route-item/{ordernumber}", response_model=List[schemas.RouteItem])
+def read_route_item(ordernumber: str, db: Session = Depends(get_db)):
+    return db.query(models.RouteItem).where(models.RouteItem.ordernumber == ordernumber)
+
+@app.put("/route-item/{route_item_id}", response_model=schemas.RouteItemUpdate)
+def update_route_item(route_item_id: str, route_item: schemas.RouteItemUpdate, db: Session = Depends(get_db)):
+    return crud.update_route_item_for_order_number(db, route_item_id, route_item)
+
 
 # --- GPS TRACKING ENDPOINTS ---
 @app.post("/gps-tracking/", response_model=schemas.GPSTracking)
@@ -410,64 +432,72 @@ def login_driver(login_data: schemas.DriverLogin, db: Session = Depends(get_db))
 
 
 @app.get("/erp/pedidos/{numero_pedido}")
-def get_erp_pedido_by_numero(numero_pedido: str, db: Session = Depends(get_erp_db)):
+def get_erp_pedido_by_numero(numero_pedido: str, db: Session = Depends(get_db), db_erp: Session = Depends(get_erp_db)):
     """
     Buscar pedido do banco ERP usando a tabela PEDIDO para endereço de entrega.
     """
-    try:
-        # Query 1: Buscar na tabela PEDIDO e EMPRESA (para telefone)
-        query_pedido = text("""
-            SELECT p.pedido, p.pedentend, p.pedentcid, p.pedentuf, p.pedentcep, p.pedentbair, e.emptelef as telefone
-            FROM pedido p
-            LEFT JOIN empresa e ON p.pedcliente = e.empresa
-            WHERE p.pedido = :numero_pedido
-            LIMIT 1
-        """)
-        result_pedido = db.execute(query_pedido, {"numero_pedido": numero_pedido})
-        pedido_row = result_pedido.fetchone()
-        
-        if not pedido_row:
-            raise HTTPException(status_code=404, detail="Pedido não encontrado")
+
+    stmt = select(func.count()).select_from(models.RouteItem).where(models.RouteItem.ordernumber==numero_pedido)
+    print(stmt)
+    res = db.scalar(stmt)
+    print(res)
+    if(res==0):
+        try:
+            # Query 1: Buscar na tabela PEDIDO e EMPRESA (para telefone)
+            query_pedido = text("""
+                SELECT p.pedido, p.pedentend, p.pedentcid, p.pedentuf, p.pedentcep, p.pedentbair, e.emptelef as telefone
+                FROM pedido p
+                LEFT JOIN empresa e ON p.pedcliente = e.empresa
+                WHERE p.pedido = :numero_pedido AND p.deposito = 1 AND p.pedusu NOT LIKE '%MICHELE%'
+                LIMIT 1
+            """)
+            result_pedido = db_erp.execute(query_pedido, {"numero_pedido": numero_pedido})
+            pedido_row = result_pedido.fetchone()
             
-        p_data = pedido_row._asdict() if hasattr(pedido_row, '_asdict') else dict(pedido_row._mapping)
-        
-        # Query 2: Buscar na tabela DOCTOS para nome do cliente e CNPJ
-        query_doctos = text("""
-            SELECT nosempant, nosempcgc FROM doctos
-            WHERE notpedido = :numero_pedido
-            LIMIT 1
-        """)
-        result_doctos = db.execute(query_doctos, {"numero_pedido": numero_pedido})
-        doctos_row = result_doctos.fetchone()
-        d_data = doctos_row._asdict() if doctos_row and hasattr(doctos_row, '_asdict') else dict(doctos_row._mapping) if doctos_row else {}
+            if not pedido_row:
+                raise HTTPException(status_code=404, detail="Pedido não encontrado! ")
+                
+            p_data = pedido_row._asdict() if hasattr(pedido_row, '_asdict') else dict(pedido_row._mapping)
+            
+            # Query 2: Buscar na tabela DOCTOS para nome do cliente e CNPJ
+            query_doctos = text("""
+                SELECT nosempant, nosempcgc FROM doctos
+                WHERE notpedido = :numero_pedido
+                LIMIT 1
+            """)
+            result_doctos = db_erp.execute(query_doctos, {"numero_pedido": numero_pedido})
+            doctos_row = result_doctos.fetchone()
+            d_data = doctos_row._asdict() if doctos_row and hasattr(doctos_row, '_asdict') else dict(doctos_row._mapping) if doctos_row else {}
 
-        # Query 3: Buscar nome da cidade
-        cidade_nome = ""
-        if p_data.get('pedentcid'):
-            query_cidade = text("SELECT cidnome FROM cidade WHERE cidade = :cid_id LIMIT 1")
-            result_cidade = db.execute(query_cidade, {"cid_id": p_data['pedentcid']})
-            cidade_row = result_cidade.fetchone()
-            if cidade_row:
-                cidade_nome = cidade_row[0]
+            # Query 3: Buscar nome da cidade
+            cidade_nome = ""
+            if p_data.get('pedentcid'):
+                query_cidade = text("SELECT cidnome FROM cidade WHERE cidade = :cid_id LIMIT 1")
+                result_cidade = db_erp.execute(query_cidade, {"cid_id": p_data['pedentcid']})
+                cidade_row = result_cidade.fetchone()
+                if cidade_row:
+                    cidade_nome = cidade_row[0]
 
-        # Retornar em snake_case para o frontend
-        return {
-            "pedido": numero_pedido,
-            "client_name": d_data.get('nosempant'),
-            "cnpj": d_data.get('nosempcgc'),
-            "telefone": p_data.get('telefone'),
-            "address": p_data.get('pedentend').strip() if p_data.get('pedentend') else None,
-            "neighborhood": p_data.get('pedentbair').strip() if p_data.get('pedentbair') else None,
-            "city": cidade_nome.strip() if cidade_nome else None,
-            "state": p_data.get('pedentuf').strip() if p_data.get('pedentuf') else None,
-            "zipcode": p_data.get('pedentcep').strip() if p_data.get('pedentcep') else None
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Erro ao buscar pedido: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erro ao buscar pedido do ERP: {str(e)}")
+            # Retornar em snake_case para o frontend
+            return {
+                "pedido": numero_pedido,
+                "client_name": d_data.get('nosempant'),
+                "cnpj": d_data.get('nosempcgc'),
+                "telefone": p_data.get('telefone'),
+                "address": p_data.get('pedentend').strip() if p_data.get('pedentend') else None,
+                "neighborhood": p_data.get('pedentbair').strip() if p_data.get('pedentbair') else None,
+                "city": cidade_nome.strip() if cidade_nome else None,
+                "state": p_data.get('pedentuf').strip() if p_data.get('pedentuf') else None,
+                "zipcode": p_data.get('pedentcep').strip() if p_data.get('pedentcep') else None
+            }
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"Erro ao buscar pedido: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Erro ao buscar pedido do ERP: {str(e)}")
+    else:
+        raise HTTPException(status_code=423, detail=f"Já existe uma rota com esse pedido!")
 
 
 

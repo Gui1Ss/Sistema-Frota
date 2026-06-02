@@ -6,11 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, Trash2, Check, Truck, AlertCircle, Eye, X } from "lucide-react";
+import { Plus, Search, Trash2, Check, Truck, AlertCircle, Eye, X, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,13 +37,41 @@ export default function RotaPage() {
   const [routeDetailsOpen, setRouteDetailsOpen] = useState(false);
   const [deleteConfirmRouteId, setDeleteConfirmRouteId] = useState<number | null>(null);
   const [deleteConfirmItemId, setDeleteConfirmItemId] = useState<number | null>(null);
+  const [editRouteItemId, setEditRouteItemId] = useState<number | null>(null);
+
+  const [editStatus, setEditStatus] = useState("");
+  const [editEndereco, setEditEndereco] = useState("");
+  const [editBairro, setEditBairro] = useState("");
+  const [editCidade, setEditCidade] = useState("");
+  const [editEstado, setEditEstado] = useState("");
+  const [editCEP, setEditCEP] = useState("");
+  const [editLatitude, setEditLatitude] = useState(0);
+  const [editLongitude, setEditLongitude] = useState(0);
+  const [editNumero, setEditNumero] = useState("");
+  const [editRoutePending, setEditRoutePending] = useState(false)
+
+interface RouteItem{
+  id: 		number
+  routeid: 	number
+  ordernumber: 	string
+  sequence:	number
+  status:		string
+  address	:	string
+  neighborhood:	string
+  city:		string
+  state:		string
+  zipcode:		string
+  latitude:	number
+  longitude:	number
+  address_number:	string
+}
 
   // Buscar motoristas
   const { data: drivers, isLoading: driversLoading } = useQuery({
     queryKey: ['drivers'],
     queryFn: async () => {
       try {
-        const response = await api.get('/drivers/');
+        const response = await api.get('/drivers/livre');
         return response.data || [];
       } catch (error) {
         console.error("Erro ao buscar motoristas:", error);
@@ -57,7 +85,7 @@ export default function RotaPage() {
     queryKey: ['vehicles'],
     queryFn: async () => {
       try {
-        const response = await api.get('/vehicles/');
+        const response = await api.get('/vehicles/livres');
         return response.data || [];
       } catch (error) {
         console.error("Erro ao buscar veículos:", error);
@@ -87,6 +115,7 @@ export default function RotaPage() {
       if (!selectedRouteForDetails?.id) return [];
       try {
         const response = await api.get('/route-items/');
+        // console.log(response.data[4].latitude)
         return response.data.filter((item: any) => item.routeid === selectedRouteForDetails.id) || [];
       } catch (error) {
         console.error("Erro ao buscar itens da rota:", error);
@@ -178,7 +207,16 @@ export default function RotaPage() {
         toast.success("Pedido adicionado");
       }
     } catch (error: any) {
-      toast.error(error.response?.status === 404 ? "Pedido não encontrado no ERP" : "Erro ao buscar pedido");
+      if(error.response?.status == 404){
+        toast.error("Pedido não encontrado no ERP");
+      }
+      else if(error.response?.status == 423){
+        toast.error("Já existe uma rota com esse pedido");
+      }
+      else{
+        toast.error("Erro ao buscar pedido");
+      }
+      
     } finally {
       setSearchingPedido(false);
     }
@@ -219,6 +257,78 @@ export default function RotaPage() {
            vehiclePlate.toLowerCase().includes(searchLower);
   }) || [];
 
+
+  useEffect(()=>{
+    setRouteDetailsOpen(false)
+
+    async function query() {
+      if(editRouteItemId!==null)
+      try {
+        const response = await api.get(`/route-item/${editRouteItemId}`);
+        console.log(response.data[0])
+        const resObj: RouteItem = response.data[0]
+        setEditStatus(resObj.status);
+        setEditEndereco(resObj.address);
+        setEditBairro(resObj.neighborhood);
+        setEditCidade(resObj.city);
+        setEditEstado(resObj.state);
+        setEditCEP(resObj.zipcode);
+        setEditLatitude(resObj.latitude ?? 0);
+        setEditLongitude(resObj.longitude ?? 0);
+        setEditNumero(resObj.address_number);
+        setEditRoutePending(false)
+      } catch (error) {
+        console.error("Erro ao buscar itens da rota:", error);
+        return [];
+      }
+    }
+    query()
+
+  }, [editRouteItemId])
+
+  const PasteCoordenate = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault()
+    const pastedText = e.clipboardData.getData('text');
+    console.log('Pasted content:', pastedText);
+    const coordenates = (pastedText.trim().split(","))
+    console.log(coordenates)
+    setEditLatitude(Number(coordenates[0]))
+    setEditLongitude(Number(coordenates[1]))
+  }
+
+  const handleEditRouteItem = async () => {
+    setEditRoutePending(true)
+    try{
+      const payload={
+        address: editEndereco, 
+        address_number: editNumero, 
+        neighborhood: editBairro, 
+        city: editCidade, 
+        state: editEstado, 
+        status: editStatus, 
+        zipcode: editCEP, 
+        latitude: editLatitude, 
+        longitude: editLongitude
+      }
+      const response = await api.put(`/route-item/${editRouteItemId}`, JSON.stringify(payload));
+      if(response.status==200){
+        toast.success("Pedido Alterado!");
+      }else
+        toast.error("Houve um erro ao alterar o pedido!");
+        
+      setEditRouteItemId(null)
+      setEditRoutePending(false)
+      
+      
+      console.log(response.data[0])
+    }catch(e){
+      console.log(e)
+      setEditRouteItemId(null)
+      setEditRoutePending(false)
+      return []
+    }
+  }
+  
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -274,7 +384,7 @@ export default function RotaPage() {
                           rota.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 
                           rota.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
                         }`}>
-                          {rota.status === 'pending' ? 'Pendente' : rota.status === 'in_progress' ? 'Em Entrega' : 'Finalizada'}
+                          {rota.status === 'pending' ? 'Pendente' : rota.status === 'in_progress' ? 'Entregando' : 'Finalizada'}
                         </span>
                       </td>
                       <td className="p-4">
@@ -324,17 +434,19 @@ export default function RotaPage() {
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Criar Nova Rota</DialogTitle></DialogHeader>
             <div className="space-y-6 py-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Motorista *</Label>
                   <Select value={selectedDriver} onValueChange={setSelectedDriver}>
                     <SelectTrigger><SelectValue placeholder="Selecione um motorista" /></SelectTrigger>
                     <SelectContent>
-                      {drivers?.map((d: any) => <SelectItem key={d.id} value={d.id.toString()}>{d.name}</SelectItem>)}
+                      {drivers?.map((d: any) => 
+                          <SelectItem key={d.id} value={d.id.toString()}>{d.name}</SelectItem>)
+                      }
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 mr-10">
                   <Label>Veículo *</Label>
                   <Select value={selectedVehicle} onValueChange={setSelectedVehicle}>
                     <SelectTrigger><SelectValue placeholder="Selecione um veículo" /></SelectTrigger>
@@ -346,6 +458,14 @@ export default function RotaPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Número do Endereço (Opcional)</Label>
+                  <Input 
+                    placeholder="Ex: 123" 
+                    value={numeroEndereco} 
+                    onChange={(e) => setNumeroEndereco(e.target.value)}
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label>Buscar Pedido no ERP</Label>
                   <div className="flex gap-2">
@@ -360,14 +480,7 @@ export default function RotaPage() {
                     </Button>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Número do Endereço (Opcional)</Label>
-                  <Input 
-                    placeholder="Ex: 123" 
-                    value={numeroEndereco} 
-                    onChange={(e) => setNumeroEndereco(e.target.value)}
-                  />
-                </div>
+                
               </div>
 
               {pedidosBuscados.length > 0 && (
@@ -404,7 +517,7 @@ export default function RotaPage() {
             <DialogHeader>
               <DialogTitle>Pedidos da Rota #{selectedRouteForDetails?.id}</DialogTitle>
             </DialogHeader>
-            <div className="py-4 space-y-4">
+            <div className="py-4 space-y-4 ">
               {itemsLoading ? (
                 <Skeleton className="h-32 w-full" />
               ) : routeItems?.length === 0 ? (
@@ -412,10 +525,11 @@ export default function RotaPage() {
               ) : (
                 <div className="border rounded-lg divide-y max-h-[60vh] overflow-y-auto">
                   {routeItems?.map((item: any) => (
-                    <div key={item.id} className="p-4 flex items-center justify-between hover:bg-slate-50">
+                    <div key={item.id} className="p-4 flex items-center relative justify-between hover:bg-slate-50">
                       <div>
                         <p className="font-bold text-slate-900">Pedido #{item.ordernumber}</p>
-                        <p className="text-sm text-slate-600">{item.address}</p>
+                        { item.latitude == null ? <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-red-100 text-red-700 absolute right-46 top-[18px]">Não tem coordernada</span> : <span></span>}
+                        <p className="text-sm text-slate-600 pt-2">{item.address}</p>
                         <p className="text-xs text-slate-400">{item.neighborhood}, {item.city} - {item.state}</p>
                         <div className="mt-2">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
@@ -428,10 +542,18 @@ export default function RotaPage() {
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="text-red-500 hover:bg-red-50"
+                        className="text-red-500 hover:bg-red-50 absolute right-10 bottom-7"
                         onClick={() => setDeleteConfirmItemId(item.id)}
                       >
                         <Trash2 size={18} />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-black hover:bg-gray-200 absolute right-10 top-7"
+                        onClick={() => setEditRouteItemId(item.ordernumber)}
+                      >
+                        <Pencil size={18} />
                       </Button>
                     </div>
                   ))}
@@ -439,6 +561,107 @@ export default function RotaPage() {
               )}
             </div>
           </DialogContent>
+        </Dialog>
+
+        <Dialog tamanho={"md"} open={editRouteItemId !== null} onOpenChange={() => setEditRouteItemId(null)}>
+              <DialogContent className="">
+                <DialogHeader className="sm:max-w-sm">
+                  <DialogTitle>Editar Pedido #{editRouteItemId}</DialogTitle>
+                </DialogHeader>
+                <div className="grid grid-cols-6 gap-3 justify-item-stretch">
+                  <div className="space-y-2 col-span-2">
+                    <Label>Status</Label>
+                    <Select value={editStatus} onValueChange={setEditStatus}>
+                      <SelectTrigger><SelectValue placeholder="Selecione o Status do pedido" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending" >Pendente</SelectItem>
+                        <SelectItem value="in_progress" >Entregue</SelectItem>
+                        <SelectItem value="entregue" >Finalizado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 col-span-4">
+                    <Label>Endereço</Label>
+                    <Input
+                      placeholder="Ex: 123"
+                      value={editEndereco}
+                      onChange={(e) => setEditEndereco(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2 col-span-4">
+                    <Label>Bairro</Label>
+                    <Input
+                      placeholder="Ex: 123"
+                      value={editBairro}
+                      onChange={(e) => setEditBairro(e.target.value)}
+                      />
+                  </div>
+                  <div className="space-y-2 col-span-2">
+                    <Label className="relative">Número<span className="text-red-600 absolute left-14 ">*</span></Label>
+                    <Input
+                      placeholder="Ex: 123"
+                      value={editNumero}
+                      onChange={(e) => setEditNumero(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2 col-span-3">
+                    <Label>Cidade</Label>
+                    <Input
+                      placeholder="Ex: 123"
+                      value={editCidade}
+                      onChange={(e) => setEditCidade(e.target.value)}
+                      />
+                  </div>
+                  <div className="space-y-2 basis-20">
+                    <Label>Estado</Label>
+                    <Select value={editEstado} onValueChange={setEditEstado}>
+                      <SelectTrigger><SelectValue placeholder="Selecione um veículo" /></SelectTrigger>
+                      <SelectContent>
+                        {["AC - Acre", "AL - Alagoas", "AP - Amapá","AM - Amazona","BA - Bahia","CE - Ceará","DF - Distrito Federal","ES - Espírito Santo","GO - Goiás","MA - Maranhão","MT - Mato Grosso","MS - Mato Grosso do Sul","MG - Minas Gerais","PA - Pará","PB - Paraíba","PR - Paraná","PE - Pernambuco","PI - Piauí","RJ - Rio de Janeiro","RN - Rio Grande do Norte","RS - Rio Grande do Sul","RO - Rondônia","RR - Roraima","SC - Santa Catarina","SP - São Paulo","SE - Sergipe","TO - Tocantins"].map((v, i)=>(
+                          <SelectItem key={i} value={v.substring(0,2)} >{v}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                <div className="space-y-2 col-span-2">
+                  <Label>CEP</Label>
+                  <Input 
+                    placeholder="Ex: 123" 
+                    value={editCEP} 
+                    onChange={(e) => setEditCEP(e.target.value)}
+                    />
+                </div>
+                  <div className="grid grid-row-2 grid-cols-2 gap-3 row-span-1 col-span-6 justify-items-stretch mt-2">
+                    <Label className="relative col-span-2">Cordenadas<span className="text-red-600 absolute left-20 ">*</span></Label>
+                    <div className="flex flex-col gap-1">
+                      <Label className="text-xs">Latitude</Label>
+                      <Input
+                        onPaste={PasteCoordenate}
+                        className="placeholder-shown:border-2 placeholder-shown:border-red-400 "
+                        placeholder="Ex: 123"
+                        value={editLatitude == 0 ? "" : String(editLatitude)}
+                        onChange={(e) => setEditLatitude(Number(e.target.value))}
+                        />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <Label className="text-xs">Longitude</Label>
+                      <Input
+                        className="placeholder-shown:border-2 placeholder-shown:border-red-400 "
+                        onPaste={PasteCoordenate}
+                        placeholder="Ex: 123"
+                        value={editLongitude == 0 ? "" : String(editLongitude)}
+                        onChange={(e) => setEditLongitude(Number(e.target.value))}
+                        />
+                    </div>
+                  </div>
+                  <Button variant={"outline"} className="p-5 col-end-4 col-span-3 mt-5 border-gray-400 hover:bg-gray-200 hover:border-gray-600" disabled={editRoutePending} onClick={() => setEditRouteItemId(null)}>
+                    <span className="">Cancelar</span>
+                  </Button>
+                  <Button className="p-5 col-end-7 col-span-3 mt-5" disabled={editRoutePending} onClick={handleEditRouteItem}>
+                    <span>{editRoutePending ? "Editando..." : "Editar Pedido"}</span>
+                  </Button>
+                </div>
+              </DialogContent>
         </Dialog>
 
         {/* Alertas de Confirmação */}
