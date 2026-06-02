@@ -133,7 +133,7 @@ def update_route_item(db: Session, item_id: int, item: schemas.RouteItemUpdate):
     return db_item
 
 def update_route_item_for_order_number(db: Session, item_id: str, item: schemas.RouteItemUpdate):
-    db_item = db.query(models.RouteItem).where(models.RouteItem.ordernumber == item_id).first()
+    db_item = db.query(models.RouteItem).where(models.RouteItem.ordernumber.like(item_id)).first()
     if db_item:
         for key, value in item.model_dump(exclude_unset=True).items():
             setattr(db_item, key, value)
