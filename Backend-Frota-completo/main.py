@@ -1,11 +1,11 @@
 from fastapi import FastAPI, Depends, HTTPException, WebSocket
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 from typing import List
 import models, schemas, crud
 from database import engine, get_db
 import requests
 import json
-from sqlalchemy import create_engine, text, select, func
+from sqlalchemy import create_engine, text, select, func, or_
 from typing import Optional
 from datetime import datetime, timedelta,date
 
@@ -111,7 +111,30 @@ def read_drivers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db))
 
 @app.get("/drivers/livre", response_model=List[schemas.Driver])
 def read_drivers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return db.query(models.Driver).join(models.Route, models.Route.driverid == models.Driver.id).where(models.Route.status == "entregue")
+    RouteSub = aliased(models.Route)
+
+    last_route_id = (
+        select(RouteSub.id)
+        .where(RouteSub.driverid == models.Driver.id)
+        .order_by(RouteSub.createdat.desc())
+        .limit(1)
+        .scalar_subquery()
+    )
+
+    return (
+        db.query(models.Driver)
+        .outerjoin(
+            models.Route,
+            models.Route.id == last_route_id
+        )
+        .filter(
+            or_(
+                models.Route.status == "entregue",
+                models.Route.id.is_(None)
+            )
+        )
+        .all()
+    )
 
 @app.get("/drivers/{driver_id}", response_model=schemas.Driver)
 def read_driver(driver_id: int, db: Session = Depends(get_db)):
@@ -145,7 +168,31 @@ def read_vehicles(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
 
 @app.get("/vehicles/livres", response_model=List[schemas.Vehicle])
 def read_vehicles(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return db.query(models.Vehicle).join(models.Route, models.Route.vehicleid == models.Vehicle.id).where(models.Route.status == "entregue")
+    RouteSub = aliased(models.Route)
+
+    last_route_id = (
+        select(RouteSub.id)
+        .where(RouteSub.vehicleid == models.Vehicle.id)
+        .order_by(RouteSub.createdat.desc())
+        .limit(1)
+        .scalar_subquery()
+    )
+
+    return (
+        db.query(models.Vehicle)
+        .outerjoin(
+            models.Route,
+            models.Route.id == last_route_id
+        )
+        .filter(
+            or_(
+                models.Route.status == "entregue",
+                models.Route.id.is_(None)
+            )
+        )
+        .all()
+    )
+        
 
 @app.put("/vehicles/{vehicle_id}", response_model=schemas.Vehicle)
 def update_vehicle(vehicle_id: int, vehicle: schemas.VehicleUpdate, db: Session = Depends(get_db)):
@@ -234,9 +281,28 @@ def create_route(route: schemas.RouteWeb, db: Session = Depends(get_db)):
         "items": lista_pedidos
     }
 
-@app.get("/routes/", response_model=List[schemas.Route])
-def read_routes(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return crud.get_items(db, models.Route, skip=skip, limit=limit)
+@app.get("/routes/", response_model=List[schemas.RouteWebRoute])
+def read_routes(db: Session = Depends(get_db)):
+    result = (
+    db.query(
+        models.Route.id,
+        models.Route.driverid,
+        models.Route.vehicleid,
+        models.Route.status,
+        models.Route.color,
+        models.Route.createdat,
+        models.Route.updatedat,
+        models.Vehicle.name.label("vehicle_name"),
+        models.Driver.name.label("driver_name")
+    )
+    .join(models.Vehicle, models.Vehicle.id == models.Route.vehicleid)
+    .join(models.Driver, models.Driver.id == models.Route.driverid)
+    .all()
+    )
+
+    print(result)
+
+    return [row._asdict() for row in result]
 
 @app.get("/routes/{id}", response_model=List[schemas.Route])
 def read_routes(id: int, db: Session = Depends(get_db)):
@@ -639,7 +705,7 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
                     routeid=item.routeid,
                     ordernumber=item.ordernumber,
                     clientname=d_data.get('nosempant'),
-                    status="Em rota"
+                    status="in_progress"
                 )
 
                 entrega = crud.create_delivery(db=db, delivery=delivery)
@@ -688,20 +754,66 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
 
 
 
-# --- WebSocket (GPS) ---
 
-@app.websocket("/gps")
-async def websocket_gps(websocket: WebSocket):
-    await websocket.accept()
 
-    while True:
-        data= await websocket.receive_json();
 
-        print(data)
+# --- (GPS) ---
 
-        await websocket.send_text(f"Chegou! \n {data}")
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-        await websocket.send_text(f"Chegou! \n {data['id']}")
+scheduler = AsyncIOScheduler()
+import httpx
+
+async def atualizar_localizacao(db: Session = Depends(get_db)):
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            "https://api.mobiltracker.com.br/trackers/last-locations", headers={
+            "Authorization": "AuthDevice aa4a6dbc0484446dbff5b25ba44685df"
+            }
+        )
+
+        # Criamos um gerenciador de contexto usando a sua função get_erp_db (ou get_db)
+        # Se get_erp_db for um generator (com yield), usamos contextlib.contextmanager
+        from contextlib import contextmanager
+        
+        # Criando o gerenciador de contexto para abrir e fechar o banco com segurança
+        managed_get_db = contextmanager(get_db) # ou get_db, dependendo de qual tabela 'models.Route' usa
+        
+        with managed_get_db() as db:
+            for car in response.json():
+                print(car)
+                
+                query = db.scalars(select(models.Route.id).where(models.Route.vehicleid == int(car['trackerId'])).where(models.Route.status.like('%in_progress%'))).first()
+                print(query)
+                if(query is not None):
+                    tracking: schemas.GPSTrackingCreate = {
+                        "routeid": query,
+                        "latitude": car['latitude'],
+                        "longitude": car['longitude']
+                    }
+
+                    db_tracking = models.GPSTracking(**tracking)
+                    db.add(db_tracking)
+                    db.commit()
+                    db.refresh(db_tracking)
+
+            # Agora 'db' será uma sessão válida do SQLAlchemy!
+            
+
+
+@app.on_event("startup")
+async def startup():
+    scheduler.add_job(
+        atualizar_localizacao,
+        "interval",
+        seconds=10
+    )
+    scheduler.start()
+
+@app.on_event("shutdown")
+async def shutdown():
+    scheduler.shutdown()
+
 
 if __name__ == "__main__":
     import uvicorn

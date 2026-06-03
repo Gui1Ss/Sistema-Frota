@@ -67,6 +67,17 @@ class RouteBase(BaseModel):
     status: Optional[str] = "pending"
     color: Optional[str] = None
 
+class RouteWebRoute(BaseModel):
+    id: int
+    driverid: int
+    vehicleid: int
+    status: str
+    color: str | None = None
+    createdat: datetime | None = None
+    updatedat: datetime | None = None
+    vehicle_name: str | None = None
+    driver_name: str | None = None
+
 class RouteCreate(RouteBase):
     pass
 
