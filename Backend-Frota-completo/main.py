@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, WebSocket
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session, aliased
 from typing import List
 import models, schemas, crud
@@ -8,12 +8,15 @@ import json
 from sqlalchemy import create_engine, text, select, func, or_
 from typing import Optional
 from datetime import datetime, timedelta,date
+import shutil
+import os
 
 apikey = 'citrix21'
 
 # Conexão com banco ERP
 ERP_DATABASE_URL = "postgresql://postgres:postgres@192.168.1.17:5432/salutem"
 erp_engine = create_engine(ERP_DATABASE_URL)
+UPLOAD_DIR = "/var/www/uploads/canhotos"
 
 def get_erp_db():
     """Conexão com banco ERP"""
@@ -76,10 +79,10 @@ def send_message(db: Session = Depends(get_db)):
 # --- APP DASHBOARD ---
 
 @app.get("/app/dashboard/{cpf}")
-def get_app_dashboard(cpf: int, db: Session = Depends(get_db)):
-    doing = db.query(models.Delivery).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == "12345678902").where(models.Delivery.deliveredat.is_(None)).count()
-    did = db.query(models.Delivery).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == "12345678902").where(models.Delivery.deliveredat.is_not(None)).count()
-    rota = db.query(models.Route.id, models.Route.createdat).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == "12345678902").where(models.Route.status == 'in_progress').first()
+def get_app_dashboard(cpf: str, db: Session = Depends(get_db)):
+    doing = db.query(models.Delivery).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == cpf).where(models.Delivery.deliveredat.is_(None)).count()
+    did = db.query(models.Delivery).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == cpf).where(models.Delivery.deliveredat.is_not(None)).count()
+    rota = db.query(models.Route.id, models.Route.createdat).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == cpf).where(models.Route.status == 'in_progress').first()
     # res = db.query(models.Route).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == "12345678902").count()
     # print(stmt2)
     # json_out = json.dumps(res, indent=4)
@@ -575,61 +578,360 @@ def get_erp_pedido_by_numero(numero_pedido: str, db: Session = Depends(get_db), 
 def get_dashboard(db: Session = Depends(get_db)):
         return crud.get_dashboard(db)
 
-@app.get("/dashboard/vehicle-map")
-def get_dashboard_map(db: Session = Depends(get_db)):
-    """
-    Retorna a localização atual de todos os veículos que possuem rotas em andamento,
-    junto com as informações de endereço de cada item da rota (route_items).
-    """
-    # 1. Buscar rotas em progresso
-    active_routes = db.query(models.Route).filter(models.Route.status == "in_progress").all()
-    
-    results = []
-    for route in active_routes:
-        # Pegar o último GPS
-        last_gps = db.query(models.GPSTracking)\
-            .filter(models.GPSTracking.routeid == route.id)\
-            .order_by(models.GPSTracking.timestamp.desc())\
-            .first()
-            
-        if not last_gps:
-            continue
-            
-        # Pegar os itens da rota (pedidos) com endereço
-        route_items = db.query(models.RouteItem)\
-            .filter(models.RouteItem.routeid == route.id)\
-            .all()
-            
-        results.append({
-            "route_id": route.id,
-            "color": route.color,
-            "vehicle": {
-                "id": route.vehicle.id,
-                "name": route.vehicle.name,
-                "plate": route.vehicle.plate
-            },
-            "driver": {
-                "id": route.driver.id,
-                "name": route.driver.name
-            },
-            "current_location": {
-                "latitude": last_gps.latitude,
-                "longitude": last_gps.longitude,
-                "timestamp": last_gps.timestamp
-            },
-            "orders": [
-                {
-                    "id": item.id,
-                    "order_number": item.ordernumber,
-                    "address": f"{item.address}, {item.neighborhood}, {item.city} - {item.state}",
-                    "zipcode": item.zipcode,
-                    "latitude": item.latitude,
-                    "longitude": item.longitude,
-                    "status": item.status
-                } for item in route_items if item.address # Apenas itens com endereço
-            ]
-        })
+
+# import httpx
+
+# @app.get("/dashboard/vehicle-map")
+# async def get_dashboard_map(db: Session = Depends(get_db)):
+#     """
+#     Retorna a localização atual de todos os veículos que possuem rotas em andamento,
+#     junto com as informações de endereço de cada item da rota (route_items).
+#     """
+#     response = {}
+#     async with httpx.AsyncClient() as client:
+#         response = await client.get(
+#             "https://api.mobiltracker.com.br/trackers/last-locations", headers={
+#             "Authorization": "AuthDevice aa4a6dbc0484446dbff5b25ba44685df"
+#             }
+#         )
+
+#         # Criamos um gerenciador de contexto usando a sua função get_erp_db (ou get_db)
+#         # Se get_erp_db for um generator (com yield), usamos contextlib.contextmanager
+#     #     from contextlib import contextmanager
         
+#     #     # Criando o gerenciador de contexto para abrir e fechar o banco com segurança
+#     #     managed_get_db = contextmanager(get_db) # ou get_db, dependendo de qual tabela 'models.Route' usa
+        
+#     # with managed_get_db() as db:
+#     #     for car in response.json():
+#     #         print(car)
+            
+#     #         query = db.scalars(select(models.Route.id).where(models.Route.vehicleid == int(car['trackerId'])).where(models.Route.status.like('%in_progress%'))).first()
+#     #         print(query)
+#     #         if(query is not None):
+#     #             tracking: schemas.GPSTrackingCreate = {
+#     #                 "routeid": query,
+#     #                 "latitude": car['latitude'],
+#     #                 "longitude": car['longitude']
+#     #             }
+#     # # 1. Buscar rotas em progresso
+#     active_routes = db.query(models.Route).filter(models.Route.status == "in_progress").all()
+#     # print(response.json())
+#     results = []
+#     # print(enumerate(active_routes))
+#     data = response.json()
+#     for index, route in enumerate(active_routes):
+#         # Pegar o último GPS
+#         last_gps = {}
+#         for car in data:
+#             # print(type(car["trackerId"]))
+#             if(car["trackerId"]==route.vehicleid):
+#                 last_gps = car 
+#         # print(last_gps)
+#         if not last_gps:
+#             continue
+
+        
+            
+#         # Pegar os itens da rota (pedidos) com endereço
+#         route_items = db.query(models.RouteItem)\
+#             .filter(models.RouteItem.routeid == route.id)\
+#             .all()
+
+#         # print(car['speed'])
+
+#         rota = {}
+
+#         # print("\nCarro: ", last_gps['trackerId'], "Velocidade: ", last_gps['speed'])
+#         if(last_gps['speed'] != 0):    
+#             coordPayloadJobs = []
+#             for item in route_items:
+#                 # print(item)
+#                 coordPayloadJobs.append({
+#                     "id": item.id,
+#                     "location": [item.longitude, item.latitude]
+#                 })
+
+#             # print(coordPayloadJobs)
+
+#             payload={
+#                 "jobs": coordPayloadJobs,
+#                 "vehicles": [
+#                     {
+#                         "id": index,
+#                         "profile": "driving-hgv",
+#                         "start": [last_gps["longitude"], last_gps["latitude"]] 
+#                     }
+#                 ]
+#             }
+#             # print(payload)
+
+            
+#             response = requests.post(
+#                 "https://api.openrouteservice.org/optimization", json=payload, headers={
+#                 "Authorization": "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImNhYjZiZTQ3OTgzYTQ4YTRhYzcxMmYyMTNjOTY3MmQ2IiwiaCI6Im11cm11cjY0In0=",
+#                 "Content-Type": "application/json"
+#                 }
+#             )
+#             print("\n\n\n---nOTIMIZOU---\n\n\n")
+#             rota = response.json()
+#             # Fim do if
+
+
+
+#         coordinates = {
+#             "coordinates": []
+#         }
+#         values = {}
+
+#         if not rota:
+#             coordinates["coordinates"].append([last_gps["longitude"], last_gps['latitude']])
+#             for items in route_items:
+#                 coordinates['coordinates'].append([items.longitude, items.latitude])
+#         # print(rota)
+#         else:
+#             for ponto in rota['routes'][0]['steps']:
+#                 if(ponto["type"]!="end"):
+#                     coordinates['coordinates'].append([ponto['location'][0], ponto['location'][1]])
+#         # print(rota)
+#         # print(coordinates)
+
+#         rotaResponse = requests.post("https://api.openrouteservice.org/v2/directions/driving-hgv/geojson", json=coordinates, headers={
+#             "Authorization": "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImNhYjZiZTQ3OTgzYTQ4YTRhYzcxMmYyMTNjOTY3MmQ2IiwiaCI6Im11cm11cjY0In0=",
+#             "Content-Type": "application/json"
+#         })
+
+#         # print("Resultado da rota: ", rotaResponse.json())
+
+#         rotaSource = rotaResponse.json()
+
+#         results.append({
+#             "route_id": route.id,
+#             "color": route.color,
+#             "vehicle": {
+#                 "id": route.vehicle.id,
+#                 "name": route.vehicle.name,
+#                 "plate": route.vehicle.plate
+#             },
+#             "driver": {
+#                 "id": route.driver.id,
+#                 "name": route.driver.name
+#             },
+#             "car_status": {
+#                 **last_gps
+#             },
+#             "route_source": {
+#                 **rotaSource
+#             },
+#             "orders": [
+#                 {
+#                     "id": item.id,
+#                     "order_number": item.ordernumber,
+#                     "address": f"{item.address}, {item.neighborhood}, {item.city} - {item.state}",
+#                     "zipcode": item.zipcode,
+#                     "latitude": item.latitude,
+#                     "longitude": item.longitude,
+#                     "status": item.status
+#                 } for item in route_items if item.address # Apenas itens com endereço
+#             ]
+#         })
+        
+#     return results
+
+from sqlalchemy.orm import selectinload
+import httpx
+
+@app.get("/dashboard/vehicle-map")
+async def get_dashboard_map(db: Session = Depends(get_db)):
+
+    async with httpx.AsyncClient(timeout=14) as client:
+
+        tracker_response = await client.get(
+            "https://api.mobiltracker.com.br/trackers/last-locations",
+            headers={
+                "Authorization": "AuthDevice aa4a6dbc0484446dbff5b25ba44685df"
+            }
+        )
+
+        tracker_response.raise_for_status()
+
+        tracker_data = tracker_response.json()
+
+    gps_map = {
+        int(car["trackerId"]): car
+        for car in tracker_data
+    }
+
+    active_routes = (
+        db.query(models.Route)
+        .options(
+            selectinload(models.Route.items),
+            selectinload(models.Route.vehicle),
+            selectinload(models.Route.driver)
+        )
+        .filter(models.Route.status == "in_progress")
+        .all()
+    )
+
+    results = []
+
+    async with httpx.AsyncClient(timeout=60) as client:
+
+        for index, route in enumerate(active_routes):
+
+            last_gps = gps_map.get(route.vehicleid)
+
+            if not last_gps:
+                continue
+
+            route_items = route.items
+
+            rota_otimizada = {}
+
+
+
+            if (
+                len(route_items) > 0
+            ):
+
+                if jobs:
+
+                    payload = {
+                        "jobs": jobs,
+                        "vehicles": [
+                            {
+                                "id": index,
+                                "profile": "driving-hgv",
+                                "start": [
+                                    last_gps["longitude"],
+                                    last_gps["latitude"]
+                                ]
+                            }
+                        ]
+                    }
+
+                    try:
+
+                        optimization_response = await client.post(
+                            "https://api.openrouteservice.org/optimization",
+                            json=payload,
+                            headers={
+                                "Authorization": "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImNhYjZiZTQ3OTgzYTQ4YTRhYzcxMmYyMTNjOTY3MmQ2IiwiaCI6Im11cm11cjY0In0=",
+                                "Content-Type": "application/json"
+                            }
+                        )
+                        # print("\n Rota: ", route.id, "\n ", optimization_response.json(), "\n\n")
+                        if optimization_response.status_code == 200:
+                            rota_otimizada = optimization_response.json()
+
+                    except Exception as e:
+                        print(
+                            f"Erro ao otimizar rota {route.id}: {e}"
+                        )
+
+            coordinates = {
+                "coordinates": []
+            }
+
+            if not rota_otimizada:
+
+                coordinates["coordinates"].append(
+                    [
+                        last_gps["longitude"],
+                        last_gps["latitude"]
+                    ]
+                )
+
+                for item in route_items:
+
+                    if item.latitude and item.longitude:
+
+                        coordinates["coordinates"].append(
+                            [
+                                item.longitude,
+                                item.latitude
+                            ]
+                        )
+
+            else:
+
+                try:
+
+                    for ponto in rota_otimizada["routes"][0]["steps"]:
+
+                        if ponto["type"] != "end":
+
+                            coordinates["coordinates"].append(
+                                [
+                                    ponto["location"][0],
+                                    ponto["location"][1]
+                                ]
+                            )
+
+                except Exception as e:
+
+                    print(
+                        f"Erro ao montar coordenadas da rota {route.id}: {e}"
+                    )
+
+            rota_source = {}
+
+            if len(coordinates["coordinates"]) >= 2:
+
+                try:
+
+                    directions_response = await client.post(
+                        "https://api.openrouteservice.org/v2/directions/driving-hgv/geojson",
+                        json=coordinates,
+                        headers={
+                            "Authorization": "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImNhYjZiZTQ3OTgzYTQ4YTRhYzcxMmYyMTNjOTY3MmQ2IiwiaCI6Im11cm11cjY0In0=",
+                            "Content-Type": "application/json"
+                        }
+                    )
+                    # print(directions_response)
+                    if directions_response.status_code == 200:
+                        rota_source = directions_response.json()
+
+                except Exception as e:
+
+                    print(
+                        f"Erro ao gerar geometria da rota {route.id}: {e}"
+                    )
+
+            results.append({
+                "route_id": route.id,
+                "color": route.color,
+
+                "vehicle": {
+                    "id": route.vehicle.id,
+                    "name": route.vehicle.name,
+                    "plate": route.vehicle.plate
+                },
+
+                "driver": {
+                    "id": route.driver.id,
+                    "name": route.driver.name
+                },
+
+                "car_status": last_gps,
+
+                "route_source": rota_source,
+
+                "orders": [
+                    {
+                        "id": item.id,
+                        "order_number": item.ordernumber,
+                        "address": f"{item.address}, {item.neighborhood}, {item.city} - {item.state}",
+                        "zipcode": item.zipcode,
+                        "latitude": item.latitude,
+                        "longitude": item.longitude,
+                        "status": item.status
+                    }
+                    for item in route_items
+                    if item.address
+                ]
+            })
+
     return results
 
 @app.post("/routes/{route_id}/saiu-entrega")
@@ -752,67 +1054,83 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
         print(f"Erro ao marcar rota como saiu para entrega: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erro: {str(e)}")
 
+# -----------
 
+
+
+@app.post("/upload-canhoto/{chave_acesso}")
+async def upload_canhoto(chave_acesso: str, file: UploadFile = File(...)):
+    # Cria a pasta se não existir
+    if not os.path.exists(UPLOAD_DIR):
+        os.makedirs(UPLOAD_DIR)
+    
+    # Define o caminho do arquivo (ex: /var/www/uploads/canhotos/44digitos.jpg)
+    file_path = os.path.join(UPLOAD_DIR, f"{chave_acesso}.jpg")
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    return {"status": "sucesso", "path": file_path}
 
 
 
 
 # --- (GPS) ---
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
+# from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-scheduler = AsyncIOScheduler()
-import httpx
+# scheduler = AsyncIOScheduler()
+# import httpx
+# @app.post("gps")
+# async def atualizar_localizacao(db: Session = Depends(get_db)):
+#     async with httpx.AsyncClient() as client:
+#         response = await client.get(
+#             "https://api.mobiltracker.com.br/trackers/last-locations", headers={
+#             "Authorization": "AuthDevice aa4a6dbc0484446dbff5b25ba44685df"
+#             }
+#         )
 
-async def atualizar_localizacao(db: Session = Depends(get_db)):
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            "https://api.mobiltracker.com.br/trackers/last-locations", headers={
-            "Authorization": "AuthDevice aa4a6dbc0484446dbff5b25ba44685df"
-            }
-        )
-
-        # Criamos um gerenciador de contexto usando a sua função get_erp_db (ou get_db)
-        # Se get_erp_db for um generator (com yield), usamos contextlib.contextmanager
-        from contextlib import contextmanager
+#         # Criamos um gerenciador de contexto usando a sua função get_erp_db (ou get_db)
+#         # Se get_erp_db for um generator (com yield), usamos contextlib.contextmanager
+#         from contextlib import contextmanager
         
-        # Criando o gerenciador de contexto para abrir e fechar o banco com segurança
-        managed_get_db = contextmanager(get_db) # ou get_db, dependendo de qual tabela 'models.Route' usa
+#         # Criando o gerenciador de contexto para abrir e fechar o banco com segurança
+#         managed_get_db = contextmanager(get_db) # ou get_db, dependendo de qual tabela 'models.Route' usa
         
-        with managed_get_db() as db:
-            for car in response.json():
-                print(car)
+#         with managed_get_db() as db:
+#             for car in response.json():
+#                 print(car)
                 
-                query = db.scalars(select(models.Route.id).where(models.Route.vehicleid == int(car['trackerId'])).where(models.Route.status.like('%in_progress%'))).first()
-                print(query)
-                if(query is not None):
-                    tracking: schemas.GPSTrackingCreate = {
-                        "routeid": query,
-                        "latitude": car['latitude'],
-                        "longitude": car['longitude']
-                    }
+#                 query = db.scalars(select(models.Route.id).where(models.Route.vehicleid == int(car['trackerId'])).where(models.Route.status.like('%in_progress%'))).first()
+#                 print(query)
+#                 if(query is not None):
+#                     tracking: schemas.GPSTrackingCreate = {
+#                         "routeid": query,
+#                         "latitude": car['latitude'],
+#                         "longitude": car['longitude']
+#                     }
 
-                    db_tracking = models.GPSTracking(**tracking)
-                    db.add(db_tracking)
-                    db.commit()
-                    db.refresh(db_tracking)
+#                     db_tracking = models.GPSTracking(**tracking)
+#                     db.add(db_tracking)
+#                     db.commit()
+#                     db.refresh(db_tracking)
 
-            # Agora 'db' será uma sessão válida do SQLAlchemy!
+#             # Agora 'db' será uma sessão válida do SQLAlchemy!
             
 
 
-@app.on_event("startup")
-async def startup():
-    scheduler.add_job(
-        atualizar_localizacao,
-        "interval",
-        seconds=10
-    )
-    scheduler.start()
+# @app.on_event("startup")
+# async def startup():
+#     scheduler.add_job(
+#         atualizar_localizacao,
+#         "interval",
+#         seconds=10
+#     )
+#     scheduler.start()
 
-@app.on_event("shutdown")
-async def shutdown():
-    scheduler.shutdown()
+# @app.on_event("shutdown")
+# async def shutdown():
+#     scheduler.shutdown()
 
 
 if __name__ == "__main__":
