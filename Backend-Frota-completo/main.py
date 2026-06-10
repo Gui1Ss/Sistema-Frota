@@ -775,7 +775,7 @@ async def get_dashboard_map(db: Session = Depends(get_db)):
 
     results = []
 
-    async with httpx.AsyncClient(timeout=60) as client:
+    async with httpx.AsyncClient(timeout=14) as client:
 
         for index, route in enumerate(active_routes):
 
@@ -789,10 +789,21 @@ async def get_dashboard_map(db: Session = Depends(get_db)):
             rota_otimizada = {}
 
 
-
             if (
                 len(route_items) > 0
             ):
+
+                jobs = [
+                    {
+                        "id": item.id,
+                        "location": [
+                            item.longitude,
+                            item.latitude
+                        ]
+                    }
+                    for item in route_items
+                    if item.latitude and item.longitude
+                ]
 
                 if jobs:
 
