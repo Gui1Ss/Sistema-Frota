@@ -377,9 +377,9 @@ def read_route_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_
 def read_route_item(ordernumber: str, db: Session = Depends(get_db)):
     return db.query(models.RouteItem).where(models.RouteItem.ordernumber == ordernumber)
 
-@app.put("/route-item/{route_item_id}", response_model=schemas.RouteItemUpdate)
-def update_route_item(route_item_id: str, route_item: schemas.RouteItemUpdate, db: Session = Depends(get_db)):
-    return crud.update_route_item_for_order_number(db, route_item_id, route_item)
+@app.put("/route-item/{order_number}", response_model=schemas.RouteItemUpdate)
+def update_route_item(order_number: str, route_item: schemas.RouteItemUpdate, db: Session = Depends(get_db)):
+    return crud.update_route_item_for_order_number(db, order_number, route_item)
 
 
 # --- GPS TRACKING ENDPOINTS ---
@@ -1069,8 +1069,8 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
 
 
 
-@app.post("/upload-canhoto/{chave_acesso}")
-async def upload_canhoto(chave_acesso: str, file: UploadFile = File(...)):
+@app.post("/upload-canhoto/{order_number}/{chave_acesso}")
+async def upload_canhoto(order_number: str, chave_acesso: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
     # Cria a pasta se não existir
     if not os.path.exists(UPLOAD_DIR):
         os.makedirs(UPLOAD_DIR)
@@ -1081,6 +1081,8 @@ async def upload_canhoto(chave_acesso: str, file: UploadFile = File(...)):
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
+    crud.update_route_item_for_order_number(db, order_number, schemas.RouteItemUpdate(status="entregue"))
+
     return {"status": "sucesso", "path": file_path}
 
 

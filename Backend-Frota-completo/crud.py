@@ -132,13 +132,47 @@ def update_route_item(db: Session, item_id: int, item: schemas.RouteItemUpdate):
         db.refresh(db_item)
     return db_item
 
-def update_route_item_for_order_number(db: Session, item_id: str, item: schemas.RouteItemUpdate):
-    db_item = db.query(models.RouteItem).where(models.RouteItem.ordernumber.like(item_id)).first()
-    if db_item:
-        for key, value in item.model_dump(exclude_unset=True).items():
-            setattr(db_item, key, value)
-        db.commit()
-        db.refresh(db_item)
+def update_route_item_for_order_number(
+    db: Session,
+    order_number: str,
+    item: schemas.RouteItemUpdate
+):
+    db_item = (
+        db.query(models.RouteItem)
+        .filter(models.RouteItem.ordernumber == order_number)
+        .first()
+    )
+
+    if not db_item:
+        return None
+
+    data = item.model_dump(exclude_unset=True)
+
+    # Remove o status para não atualizar route_items diretamente
+    new_status = data.pop("status", None)
+
+    # Atualiza todos os demais campos do route_item
+    for key, value in data.items():
+        setattr(db_item, key, value)
+
+    # Se veio status, atualiza a delivery correspondente
+    if new_status is not None:
+        delivery = (
+            db.query(models.Delivery)
+            .filter(
+                models.Delivery.ordernumber == db_item.ordernumber,
+                models.Delivery.routeid == db_item.routeid
+            )
+            .first()
+        )
+
+        if delivery:
+            delivery.status = new_status
+
+    db.commit()
+
+    db.refresh(db_item)
+
     return db_item
 
 
