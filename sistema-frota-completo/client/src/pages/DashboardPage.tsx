@@ -1,4 +1,5 @@
 import MainLayout from "@/components/MainLayout";
+import VehicleDashboardMap from "@/components/VehicleDashboardMap";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Users, Truck, MapPin, Package, CheckCircle2, Clock } from "lucide-react";
@@ -73,6 +74,9 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
           <p className="text-slate-600 mt-2">Visão geral do sistema de logística</p>
         </div>
+
+        {/* Mapa de Rastreamento */}
+        <VehicleDashboardMap />
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {stats.map((stat, index) => {

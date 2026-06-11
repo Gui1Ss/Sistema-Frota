@@ -20,6 +20,7 @@ interface DriverFormData {
   email: string;
   cnhValidade?: string;
   categoria?: string;
+  senha?: string;
 }
 
 export default function MotoristaPage() {
@@ -34,6 +35,7 @@ export default function MotoristaPage() {
     email: "",
     cnhValidade: "",
     categoria: "D",
+    senha: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -137,6 +139,7 @@ export default function MotoristaPage() {
       email: motorista.email || "",
       cnhValidade: motorista.cnhValidade || "",
       categoria: motorista.categoria || "D",
+      senha: "",
     });
     setEditingId(motorista.id);
     setIsDialogOpen(true);
@@ -153,7 +156,8 @@ export default function MotoristaPage() {
       telefone: "", 
       email: "",
       cnhValidade: "",
-      categoria: "D"
+      categoria: "D",
+      senha: "",
     });
     setErrors({});
   };
@@ -195,6 +199,7 @@ export default function MotoristaPage() {
                     id="cpf" 
                     value={formData.cpf} 
                     onChange={e => setFormData({...formData, cpf: e.target.value})} 
+                    maxLength={14}
                   />
                   {errors.cpf && <p className="text-sm text-red-600">{errors.cpf}</p>}
                 </div>
@@ -204,6 +209,7 @@ export default function MotoristaPage() {
                     id="cnh" 
                     value={formData.cnh} 
                     onChange={e => setFormData({...formData, cnh: e.target.value})} 
+                    maxLength={50}
                   />
                   {errors.cnh && <p className="text-sm text-red-600">{errors.cnh}</p>}
                 </div>
@@ -213,6 +219,7 @@ export default function MotoristaPage() {
                     id="telefone" 
                     value={formData.telefone} 
                     onChange={e => setFormData({...formData, telefone: e.target.value})} 
+                    maxLength={20}
                   />
                   {errors.telefone && <p className="text-sm text-red-600">{errors.telefone}</p>}
                 </div>
@@ -240,6 +247,15 @@ export default function MotoristaPage() {
                     id="categoria" 
                     value={formData.categoria} 
                     onChange={e => setFormData({...formData, categoria: e.target.value})} 
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="senha">{editingId ? "Nova Senha (deixe vazio para manter)" : "Senha *"}</Label>
+                  <Input 
+                    id="senha" 
+                    type="password"
+                    value={formData.senha} 
+                    onChange={e => setFormData({...formData, senha: e.target.value})} 
                   />
                 </div>
                 <Button type="submit" className="w-full">
