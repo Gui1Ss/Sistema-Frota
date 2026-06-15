@@ -7,7 +7,7 @@ import requests
 import json
 from sqlalchemy import create_engine, text, select, func, or_
 from typing import Optional
-from datetime import datetime, timedelta,date
+from datetime import datetime, timedelta, time
 import shutil
 import os
 
@@ -81,20 +81,25 @@ def send_message(db: Session = Depends(get_db)):
 @app.get("/app/dashboard/{cpf}")
 def get_app_dashboard(cpf: str, db: Session = Depends(get_db)):
     doing = db.query(models.Delivery).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == cpf).where(models.Delivery.deliveredat.is_(None)).count()
-    did = db.query(models.Delivery).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == cpf).where(models.Delivery.deliveredat.is_not(None)).count()
+    did = db.query(models.Delivery).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == cpf).where(models.Delivery.status == 'entregue').count()
+    stmt = select(models.Route.id, models.Route.createdat).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == cpf).where(models.Route.status == 'in_progress') 
     rota = db.query(models.Route.id, models.Route.createdat).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == cpf).where(models.Route.status == 'in_progress').first()
     # res = db.query(models.Route).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == "12345678902").count()
-    # print(stmt2)
+    print(stmt)
     # json_out = json.dumps(res, indent=4)
-    print(rota)
-    return {
+    payload={
         "emAndamento": doing,
         "concluidas": did,
-        "rotaAtual": {
+    }
+    print(rota)
+    if rota is not None: 
+        rotaAtual = {
             "id": rota[0],
             "createdat": rota[1]
         }
-    }
+        payload["rotaAtual"] = rotaAtual
+    print(rota)
+    return  payload
 
 
 
@@ -439,9 +444,26 @@ def deliveries_app_historico(driver: str, date: str, db: Session = Depends(get_d
     # print(date+" 0:00:0.000-03")
     # stmt= select(models.Delivery.id, models.Delivery.routeid, models.Delivery.ordernumber, models.Delivery.clientname,models.Driver.name, models.Vehicle.name, models.Delivery.status, models.RouteItem.address, models.RouteItem.address_number, models.RouteItem.city, models.RouteItem.state, models.RouteItem.zipcode,models.RouteItem.latitude, models.RouteItem.longitude).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.RouteItem, models.RouteItem.ordernumber == models.Delivery.ordernumber).join(models.Driver, models.Driver.id == models.Route.driverid).join(models.Vehicle, models.Vehicle.id == models.Route.vehicleid).where(models.Driver.cpf == driver).where(models.Delivery.deliveredat>date)
     # print(stmt)
-    date_obj = datetime.strptime(date, "%Y-%m-%d")
+    date_obj = datetime.combine(
+    datetime.strptime(date, "%Y-%m-%d").date(),
+    time.min
+    )
+
     tomorrow = date_obj + timedelta(days=1)
-    return db.query(models.Delivery.id, models.Delivery.routeid, models.Delivery.ordernumber, models.Delivery.clientname,models.Driver.name.label("driver_name"), models.Vehicle.name.label("vehicle_name"), models.Delivery.status, models.RouteItem.address, models.RouteItem.address_number, models.RouteItem.city, models.RouteItem.state, models.RouteItem.zipcode,models.RouteItem.latitude, models.RouteItem.longitude).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.RouteItem, models.RouteItem.ordernumber == models.Delivery.ordernumber).join(models.Driver, models.Driver.id == models.Route.driverid).join(models.Vehicle, models.Vehicle.id == models.Route.vehicleid).where(models.Driver.cpf == driver).where(models.Delivery.deliveredat>date_obj).where(models.Delivery.deliveredat < tomorrow).all();
+    print(date_obj)
+    print(tomorrow)
+
+    stmt = select(models.Delivery.id, models.Delivery.routeid, models.Delivery.ordernumber, models.Delivery.clientname,models.Driver.name.label("driver_name"), models.Vehicle.name.label("vehicle_name"), models.Delivery.status, models.RouteItem.address, models.RouteItem.address_number, models.RouteItem.city, models.RouteItem.state, models.RouteItem.zipcode,models.RouteItem.latitude, models.RouteItem.longitude).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.RouteItem, models.RouteItem.ordernumber == models.Delivery.ordernumber).join(models.Driver, models.Driver.id == models.Route.driverid).join(models.Vehicle, models.Vehicle.id == models.Route.vehicleid).where(models.Driver.cpf == driver).filter(
+    models.Delivery.deliveredat >= date_obj,
+    models.Delivery.deliveredat < tomorrow)
+
+    print(stmt)
+
+    res = db.query(models.Delivery.id, models.Delivery.routeid, models.Delivery.ordernumber, models.Delivery.clientname,models.Driver.name.label("driver_name"), models.Vehicle.name.label("vehicle_name"), models.Delivery.status, models.RouteItem.address, models.RouteItem.address_number, models.RouteItem.city, models.RouteItem.state, models.RouteItem.zipcode,models.RouteItem.latitude, models.RouteItem.longitude).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.RouteItem, models.RouteItem.ordernumber == models.Delivery.ordernumber).join(models.Driver, models.Driver.id == models.Route.driverid).join(models.Vehicle, models.Vehicle.id == models.Route.vehicleid).where(models.Driver.cpf == driver).filter(
+    models.Delivery.deliveredat >= date_obj,
+    models.Delivery.deliveredat < tomorrow).all();
+    print(res)
+    return res
 
 @app.put("/deliveries/{delivery_id}", response_model=schemas.Delivery)
 def update_delivery(delivery_id: int, delivery: schemas.DeliveryUpdate, db: Session = Depends(get_db)):
@@ -945,6 +967,211 @@ async def get_dashboard_map(db: Session = Depends(get_db)):
 
     return results
 
+
+@app.get("/dashboard/vehicle-map/driver/{id_motorista}")
+async def get_dashboard_map_by_driver(id_motorista: int, db: Session = Depends(get_db)):
+
+    # Pegar veiculo da rota pelo id do motorista
+    active_route_by_driver = db.query(models.Route).where(models.Route.driverid==id_motorista).where(models.Route.status=="in_progress").first()
+    print(active_route_by_driver.driverid)
+    active_routes = [active_route_by_driver]
+    async with httpx.AsyncClient(timeout=14) as client:
+
+        tracker_response = await client.get(
+            "https://api.mobiltracker.com.br/trackers/last-locations",
+            headers={
+                "Authorization": "AuthDevice aa4a6dbc0484446dbff5b25ba44685df"
+            }
+        )
+
+        tracker_response.raise_for_status()
+
+        tracker_data = tracker_response.json()
+
+    carS = next((u for u in tracker_data if u['trackerId']==active_route_by_driver.vehicleid))
+
+    gps_map = {
+        int(carS['trackerId']): carS    
+    }
+
+    print(gps_map)
+
+    results = []
+
+    async with httpx.AsyncClient(timeout=40) as client:
+
+        for index, route in enumerate(active_routes):
+
+            last_gps = gps_map.get(route.vehicleid)
+
+            if not last_gps:
+                continue
+
+            route_items = route.items
+
+            rota_otimizada = {}
+
+
+            if (
+                len(route_items) > 0
+            ):
+
+                jobs = [
+                    {
+                        "id": item.id,
+                        "location": [
+                            item.longitude,
+                            item.latitude
+                        ]
+                    }
+                    for item in route_items
+                    if item.latitude and item.longitude
+                ]
+
+                if jobs:
+
+                    payload = {
+                        "jobs": jobs,
+                        "vehicles": [
+                            {
+                                "id": index,
+                                "profile": "driving-hgv",
+                                "start": [
+                                    last_gps["longitude"],
+                                    last_gps["latitude"]
+                                ]
+                            }
+                        ]
+                    }
+
+                    try:
+
+                        optimization_response = await client.post(
+                            "https://api.openrouteservice.org/optimization",
+                            json=payload,
+                            headers={
+                                "Authorization": "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImNhYjZiZTQ3OTgzYTQ4YTRhYzcxMmYyMTNjOTY3MmQ2IiwiaCI6Im11cm11cjY0In0=",
+                                "Content-Type": "application/json"
+                            }
+                        )
+                        # print("\n Rota: ", route.id, "\n ", optimization_response.json(), "\n\n")
+                        if optimization_response.status_code == 200:
+                            rota_otimizada = optimization_response.json()
+
+                    except Exception as e:
+                        print(
+                            f"Erro ao otimizar rota {route.id}: {e}"
+                        )
+
+            coordinates = {
+                "coordinates": []
+            }
+
+            if not rota_otimizada:
+
+                coordinates["coordinates"].append(
+                    [
+                        last_gps["longitude"],
+                        last_gps["latitude"]
+                    ]
+                )
+
+                for item in route_items:
+
+                    if item.latitude and item.longitude:
+
+                        coordinates["coordinates"].append(
+                            [
+                                item.longitude,
+                                item.latitude
+                            ]
+                        )
+
+            else:
+
+                try:
+
+                    for ponto in rota_otimizada["routes"][0]["steps"]:
+
+                        if ponto["type"] != "end":
+
+                            coordinates["coordinates"].append(
+                                [
+                                    ponto["location"][0],
+                                    ponto["location"][1]
+                                ]
+                            )
+
+                except Exception as e:
+
+                    print(
+                        f"Erro ao montar coordenadas da rota {route.id}: {e}"
+                    )
+
+            rota_source = {}
+
+            if len(coordinates["coordinates"]) >= 2:
+
+                try:
+
+                    directions_response = await client.post(
+                        "https://api.openrouteservice.org/v2/directions/driving-hgv/geojson",
+                        json=coordinates,
+                        headers={
+                            "Authorization": "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImNhYjZiZTQ3OTgzYTQ4YTRhYzcxMmYyMTNjOTY3MmQ2IiwiaCI6Im11cm11cjY0In0=",
+                            "Content-Type": "application/json"
+                        }
+                    )
+                    # print(directions_response)
+                    if directions_response.status_code == 200:
+                        rota_source = directions_response.json()
+
+                except Exception as e:
+
+                    print(
+                        f"Erro ao gerar geometria da rota {route.id}: {e}"
+                    )
+
+            results.append({
+                "route_id": route.id,
+                "color": route.color,
+
+                "vehicle": {
+                    "id": route.vehicle.id,
+                    "name": route.vehicle.name,
+                    "plate": route.vehicle.plate
+                },
+
+                "driver": {
+                    "id": route.driver.id,
+                    "name": route.driver.name
+                },
+
+                "car_status": last_gps,
+
+                "route_source": rota_source,
+
+                "orders": [
+                    {
+                        "id": item.id,
+                        "order_number": item.ordernumber,
+                        "address": f"{item.address}, {item.neighborhood}, {item.city} - {item.state}",
+                        "zipcode": item.zipcode,
+                        "latitude": item.latitude,
+                        "longitude": item.longitude,
+                        "status": item.status
+                    }
+                    for item in route_items
+                    if item.address
+                ]
+            })
+
+    return results
+
+
+
+
+
 @app.post("/routes/{route_id}/saiu-entrega")
 def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Session = Depends(get_erp_db)):
     """
@@ -1069,8 +1296,8 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
 
 
 
-@app.post("/upload-canhoto/{order_number}/{chave_acesso}")
-async def upload_canhoto(order_number: str, chave_acesso: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+@app.post("/upload-canhoto/{order_number}/{chave_acesso}/{id_deliveries}")
+async def upload_canhoto(order_number: str, chave_acesso: str, id_deliveries: int,file: UploadFile = File(...), db: Session = Depends(get_db)):
     # Cria a pasta se não existir
     if not os.path.exists(UPLOAD_DIR):
         os.makedirs(UPLOAD_DIR)
@@ -1082,6 +1309,22 @@ async def upload_canhoto(order_number: str, chave_acesso: str, file: UploadFile 
         shutil.copyfileobj(file.file, buffer)
         
     crud.update_route_item_for_order_number(db, order_number, schemas.RouteItemUpdate(status="entregue"))
+    
+
+    with db as db:
+    # 2. Retrieve the object you want to update
+        delivery = db.get(models.Delivery, id_deliveries)  # Fetches User where id=1
+        
+        if delivery:
+            # date_obj = datetime.combine(
+            #     datetime.strptime(str(datetime.now()), "%Y-%m-%d").date(),
+            #     time.min
+            # )
+            # 3. Modify the attribute directly
+            delivery.deliveredat = datetime.now()
+            
+            # 4. Commit to persist changes
+            db.commit()
 
     return {"status": "sucesso", "path": file_path}
 
