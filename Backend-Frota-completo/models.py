@@ -63,6 +63,7 @@ class RouteItem(Base):
     address_number = Column(String)
     latitude = Column(Float)
     longitude = Column(Float)
+    phone = Column(String)
 
     route = relationship("Route", back_populates="items")
 

@@ -219,7 +219,7 @@ def delete_vehicle(vehicle_id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/routes/", response_model=schemas.RouteWeb)
-def create_route(route: schemas.RouteWeb, db: Session = Depends(get_db)):
+def create_route(route: schemas.RouteWeb, db: Session = Depends(get_db), erp_db: Session = Depends(get_erp_db)):
 
     lista_pedidos = route.items
 
@@ -263,6 +263,34 @@ def create_route(route: schemas.RouteWeb, db: Session = Depends(get_db)):
             except Exception as e:
                 print(f"Erro na geolocalização automática: {str(e)}")
 
+
+        query_pedido = text("""
+            SELECT p.pedentend, p.pedentcid, p.pedentuf, p.pedentcep, p.pedentbair, e.emptelef as telefone
+            FROM pedido p
+            LEFT JOIN empresa e ON p.pedcliente = e.empresa
+            WHERE p.pedido = :numero_pedido
+            LIMIT 1
+        """)
+        result_pedido = erp_db.execute(query_pedido, {"numero_pedido": i.ordernumber})
+        pedido_row = result_pedido.fetchone()
+        
+        if not pedido_row:
+            continue
+        
+        p_data = pedido_row._asdict() if hasattr(pedido_row, '_asdict') else dict(pedido_row._mapping)
+
+        telefone = p_data.get('telefone')
+        telefone = telefone.replace("(", "")
+        telefone = telefone.replace(")", "")
+        telefone = telefone.replace("-", "")
+        telefone = telefone.strip(" ")
+        a_tel = telefone.split(" ")
+        telefone = "".join(a_tel)
+        telefone = "55"+telefone
+        print(telefone)
+
+        mensagem("leandro", "5511948447544", f"Seu pedido já está em rota!\n\n Código do Pedido: *{item.ordernumber}*")
+
         item_data = {
             "routeid": nova_rota.id,
             "ordernumber": i.ordernumber,
@@ -275,14 +303,15 @@ def create_route(route: schemas.RouteWeb, db: Session = Depends(get_db)):
             "zipcode": i.zipcode,
             "address_number": i.address_number,
             "latitude": latitude,
-            "longitude": longitude
+            "longitude": longitude,
+            "phone": telefone
         }
 
         crud.create_route_item(db=db, item=item_data)
 
         print(i.telefone)
-        mensagem("leandro", "5511975534028", f"Seu pedido já está sendo separado!\n - Número da rota: {nova_rota.id}\n - Número do pedido: {i.ordernumber}\n *STATUS*: {i.status}")
-        mensagem("leandro", "5511989642157", f"Seu pedido já está sendo separado!\n - Número da rota: {nova_rota.id}\n - Número do pedido: {i.ordernumber}\n *STATUS*: {i.status}")
+        # mensagem("leandro", "5511975534028", f"Seu pedido já está sendo separado!\n - Número da rota: {nova_rota.id}\n - Número do pedido: {i.ordernumber}\n *STATUS*: {i.status}")
+        # mensagem("leandro", "5511989642157", f"Seu pedido já está sendo separado!\n - Número da rota: {nova_rota.id}\n - Número do pedido: {i.ordernumber}\n *STATUS*: {i.status}")
 
     return {
         "route": nova_rota,
@@ -308,7 +337,7 @@ def read_routes(db: Session = Depends(get_db)):
     .all()
     )
 
-    print(result)
+    # print(result)
 
     return [row._asdict() for row in result]
 
@@ -842,7 +871,7 @@ async def get_dashboard_map(db: Session = Depends(get_db)):
                             }
                         ]
                     }
-
+                    print(payload)
                     try:
 
                         optimization_response = await client.post(
@@ -961,7 +990,7 @@ async def get_dashboard_map(db: Session = Depends(get_db)):
                         "status": item.status
                     }
                     for item in route_items
-                    if item.address
+                    if item.address and item.status == "in_progress"
                 ]
             })
 
@@ -1240,7 +1269,18 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
                     "state": p_data.get('pedentuf').strip() if p_data.get('pedentuf') else None,
                     "zipcode": p_data.get('pedentcep').strip() if p_data.get('pedentcep') else None,
                 }
-                
+                telefone = pedido_data['telefone']
+                telefone = telefone.replace("(", "")
+                telefone = telefone.replace(")", "")
+                telefone = telefone.replace("-", "")
+                telefone = telefone.strip(" ")
+                a_tel = telefone.split(" ")
+                telefone = "".join(a_tel)
+                telefone = "55"+telefone
+                print(telefone)
+
+                mensagem("leandro", "5511948447544", f"Seu pedido já está em rota!\n\n Código do Pedido: *{item.ordernumber}*")
+
                 delivery = schemas.DeliveryCreate(
                     routeid=item.routeid,
                     ordernumber=item.ordernumber,
@@ -1274,8 +1314,6 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
         rota.status = "in_progress"
         db.add(rota)
         db.commit()
-        
-        
 
         return {
             "success": True,
@@ -1308,8 +1346,15 @@ async def upload_canhoto(order_number: str, chave_acesso: str, id_deliveries: in
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
+
+    res = db.scalar(select(models.RouteItem.phone).where(models.RouteItem.ordernumber == order_number))
+
+    print(res)
+
     crud.update_route_item_for_order_number(db, order_number, schemas.RouteItemUpdate(status="entregue"))
     
+
+    mensagem("leandro", "5511948447544", f"*Seu pedido foi entregue!*")
 
     with db as db:
     # 2. Retrieve the object you want to update
