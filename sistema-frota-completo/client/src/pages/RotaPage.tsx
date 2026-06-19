@@ -240,7 +240,6 @@ export default function RotaPage() {
           ...pedidosBuscados,
           {
             ...pedido,
-            address_number: numeroEndereco,
             sequencia: pedidosBuscados.length + 1,
           },
         ]);
@@ -598,9 +597,7 @@ export default function RotaPage() {
                           </p>
                           <p className="text-xs text-slate-500">
                             {p.address}
-                            {p.address_number
-                              ? `, ${p.address_number}`
-                              : ""}, {p.city}
+                            {p.address_number}, {p.city}
                           </p>
                         </div>
                         <Button
