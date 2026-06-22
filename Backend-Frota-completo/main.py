@@ -10,13 +10,19 @@ from typing import Optional
 from datetime import datetime, timedelta, time
 import shutil
 import os
+from dotenv import load_dotenv
 
-apikey = 'citrix21'
+load_dotenv()
+
+apikey = os.getenv("GENERAL_API_KEY")
+ORS_KEY = os.getenv("ORS_API_KEY")
+MT_KEY = os.getenv("MOBIL_TRACKER_API_KEY")
 
 # Conexão com banco ERP
-ERP_DATABASE_URL = "postgresql://postgres:postgres@192.168.1.17:5432/salutem"
+ERP_DATABASE_URL = os.getenv("DB_ERP_URL")
 erp_engine = create_engine(ERP_DATABASE_URL)
-UPLOAD_DIR = "/var/www/uploads/canhotos"
+
+UPLOAD_DIR = os.getenv("CANHOTOS_UPLOAD_DIR") 
 
 def get_erp_db():
     """Conexão com banco ERP"""
@@ -720,7 +726,7 @@ def get_dashboard(db: Session = Depends(get_db)):
             
 #             response = requests.post(
 #                 "https://api.openrouteservice.org/optimization", json=payload, headers={
-#                 "Authorization": "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImNhYjZiZTQ3OTgzYTQ4YTRhYzcxMmYyMTNjOTY3MmQ2IiwiaCI6Im11cm11cjY0In0=",
+#                 "Authorization": "",
 #                 "Content-Type": "application/json"
 #                 }
 #             )
@@ -748,7 +754,7 @@ def get_dashboard(db: Session = Depends(get_db)):
 #         # print(coordinates)
 
 #         rotaResponse = requests.post("https://api.openrouteservice.org/v2/directions/driving-hgv/geojson", json=coordinates, headers={
-#             "Authorization": "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImNhYjZiZTQ3OTgzYTQ4YTRhYzcxMmYyMTNjOTY3MmQ2IiwiaCI6Im11cm11cjY0In0=",
+#             "Authorization": "",
 #             "Content-Type": "application/json"
 #         })
 
@@ -878,7 +884,7 @@ async def get_dashboard_map(db: Session = Depends(get_db)):
                             "https://api.openrouteservice.org/optimization",
                             json=payload,
                             headers={
-                                "Authorization": "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImNhYjZiZTQ3OTgzYTQ4YTRhYzcxMmYyMTNjOTY3MmQ2IiwiaCI6Im11cm11cjY0In0=",
+                                "Authorization": ORS_KEY,
                                 "Content-Type": "application/json"
                             }
                         )
@@ -946,7 +952,7 @@ async def get_dashboard_map(db: Session = Depends(get_db)):
                         "https://api.openrouteservice.org/v2/directions/driving-hgv/geojson",
                         json=coordinates,
                         headers={
-                            "Authorization": "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImNhYjZiZTQ3OTgzYTQ4YTRhYzcxMmYyMTNjOTY3MmQ2IiwiaCI6Im11cm11cjY0In0=",
+                            "Authorization": ORS_KEY,
                             "Content-Type": "application/json"
                         }
                     )
@@ -1009,7 +1015,7 @@ async def get_dashboard_map_by_driver(id_motorista: int, db: Session = Depends(g
         tracker_response = await client.get(
             "https://api.mobiltracker.com.br/trackers/last-locations",
             headers={
-                "Authorization": "AuthDevice aa4a6dbc0484446dbff5b25ba44685df"
+                "Authorization": f"AuthDevice {MT_KEY}"
             }
         )
 
@@ -1079,7 +1085,7 @@ async def get_dashboard_map_by_driver(id_motorista: int, db: Session = Depends(g
                             "https://api.openrouteservice.org/optimization",
                             json=payload,
                             headers={
-                                "Authorization": "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImNhYjZiZTQ3OTgzYTQ4YTRhYzcxMmYyMTNjOTY3MmQ2IiwiaCI6Im11cm11cjY0In0=",
+                                "Authorization": ORS_KEY,
                                 "Content-Type": "application/json"
                             }
                         )
@@ -1147,7 +1153,7 @@ async def get_dashboard_map_by_driver(id_motorista: int, db: Session = Depends(g
                         "https://api.openrouteservice.org/v2/directions/driving-hgv/geojson",
                         json=coordinates,
                         headers={
-                            "Authorization": "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImNhYjZiZTQ3OTgzYTQ4YTRhYzcxMmYyMTNjOTY3MmQ2IiwiaCI6Im11cm11cjY0In0=",
+                            "Authorization": ORS_KEY,
                             "Content-Type": "application/json"
                         }
                     )

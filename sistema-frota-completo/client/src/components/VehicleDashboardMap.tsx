@@ -558,23 +558,23 @@ export default function VehicleDashboardMap() {
 
   return (
     <Card className="p-6 mb-6 shadow-md">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-2">
         <h2 className="text-xl font-bold text-slate-900">
           Rastreamento em Tempo Real
         </h2>
-        <div className="flex gap-3 text-xs font-medium">
+        {/* <div className="flex gap-3 text-xs font-medium">
           <span className="flex items-center gap-1">
             <i className="w-3 h-3 rounded-full bg-blue-500"></i> Veículo
           </span>
           <span className="flex items-center gap-1">
             <i className="w-3 h-3 rounded-full bg-red-500"></i> Entrega
           </span>
-        </div>
+        </div> */}
       </div>
 
       <div
         ref={mapContainer}
-        style={{ width: "100%", height: "450px", background: "#f8fafc" }}
+        style={{ width: "100%", height: "500px", background: "#f8fafc" }}
         className="rounded-xl border border-slate-200 overflow-hidden"
       >
         {mapError && (
