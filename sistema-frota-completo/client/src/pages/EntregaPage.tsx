@@ -2,12 +2,13 @@ import MainLayout from "@/components/MainLayout";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Search, Trash2 } from "lucide-react";
+import { BellRing, Search, Trash2, X } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -19,11 +20,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function EntregaPage() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [notificationDialog, setNotificationDialog] = useState(false);
+  const [numeroPedido, setNumeroPedido] = useState("");
+  const [searchingPedido, setSearchingPedido] = useState(false);
+  const [pedidosBuscados, setPedidosBuscados] = useState<any[]>([]);
 
   const { data: deliveries, isLoading } = useQuery({
     queryKey: ["deliveries"],
@@ -74,6 +85,42 @@ export default function EntregaPage() {
       );
     }) || [];
 
+  const handleSearchPedido = async () => {
+    if (!numeroPedido.trim()) return;
+    setSearchingPedido(true);
+    try {
+      const response = await api.get(`/erp/pedidos/${numeroPedido}`);
+      const pedido = response.data;
+      if (pedidosBuscados.some(p => p.pedido === pedido.pedido)) {
+        toast.warning("Este pedido já foi adicionado");
+      } else {
+        setPedidosBuscados([
+          ...pedidosBuscados,
+          {
+            ...pedido,
+            sequencia: pedidosBuscados.length + 1,
+          },
+        ]);
+        setNumeroPedido("");
+        toast.success("Pedido adicionado");
+      }
+    } catch (error: any) {
+      if (error.response?.status == 404) {
+        toast.error("Pedido não encontrado no ERP");
+      } else if (error.response?.status == 423) {
+        toast.error("Já existe uma rota com esse pedido");
+      } else {
+        toast.error("Erro ao buscar pedido");
+      }
+    } finally {
+      setSearchingPedido(false);
+    }
+  };
+
+  useEffect(() => {
+    console.log(pedidosBuscados);
+  }, [pedidosBuscados]);
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -98,8 +145,83 @@ export default function EntregaPage() {
                 className="pl-10"
               />
             </div>
+            <Button onClick={() => setNotificationDialog(true)}>
+              <BellRing size={20} />
+              Notificar entrega
+            </Button>
           </div>
         </Card>
+
+        <Dialog open={notificationDialog} onOpenChange={setNotificationDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Notificar Entrega</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col w-full gap-2">
+              <div className="flex flex-col w-full gap-2 items-start justify-stretch">
+                <Label>Número do Pedido</Label>
+                <div className="space-y-2 w-full gap-2 flex flex-row">
+                  <Input
+                    placeholder="Ex: 123"
+                    value={numeroPedido}
+                    onChange={e => setNumeroPedido(e.target.value)}
+                    onKeyPress={e => e.key === "Enter" && handleSearchPedido()}
+                  />
+                  <Button onClick={handleSearchPedido}>
+                    <Search size={16} />
+                  </Button>
+                </div>
+              </div>
+              <hr className="border-2" />
+
+              <div className="flex">
+                {pedidosBuscados.length === 0 ? (
+                  <div className="mt-3 flex border-2 p-6 rounded-sm flex-col justify-center items-center">
+                    <X size={48} className="text-gray-500" />
+                    <h1 className="font-bold text-xl mt-4 text-gray-500">
+                      Vazio
+                    </h1>
+                    <h2 className="text-gray-500 font-light w-[60%] text-center">
+                      Digite o código dos pedidos e adicione os para notificar
+                      ao cliente
+                    </h2>
+                  </div>
+                ) : (
+                  <div className="flex flex-col w-full gap-2">
+                    {pedidosBuscados.map((p, i) => (
+                      <div
+                        key={i}
+                        className="p-3 flex items-center justify-between w-full border-2 rounded-sm bg-slate-50/50"
+                      >
+                        <div>
+                          <p className="text-sm font-bold">
+                            #{p.pedido} - {p.client_name}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {p.address}
+                            {p.address_number}, {p.city}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            setPedidosBuscados(
+                              pedidosBuscados.filter((_, idx) => idx !== i)
+                            )
+                          }
+                          className="text-red-500"
+                        >
+                          <X size={16} />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Card className="overflow-hidden border-slate-200 shadow-sm">
           <div className="overflow-x-auto">
