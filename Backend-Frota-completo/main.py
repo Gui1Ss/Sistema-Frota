@@ -285,14 +285,15 @@ def create_route(route: schemas.RouteWeb, db: Session = Depends(get_db), erp_db:
         
         p_data = pedido_row._asdict() if hasattr(pedido_row, '_asdict') else dict(pedido_row._mapping)
 
-        telefone = p_data.get('telefone')
+        telefone = p_data['telefone']
         telefone = telefone.replace("(", "")
         telefone = telefone.replace(")", "")
         telefone = telefone.replace("-", "")
         telefone = telefone.strip(" ")
         a_tel = telefone.split(" ")
         telefone = "".join(a_tel)
-        telefone = "55"+telefone
+        if "55" != telefone.slice(0, 2):
+            telefone = "55"+telefone
         print(telefone)
 
         mensagem("leandro", "5511948447544", f"Seu pedido já está em rota!\n\n Código do Pedido: *{item.ordernumber}*")
@@ -453,7 +454,7 @@ def create_notification(notification: schemas.WhatsAppNotificationCreate, db: Se
 def create_delivery(delivery: schemas.DeliveryCreate, db: Session = Depends(get_db)):
     return crud.create_delivery(db=db, delivery=delivery)
 
-@app.get("/deliveries/", response_model=List[schemas.Delivery])
+@app.get("/deliveries/", response_model=List[schemas.DeliveryBase])
 def read_deliveries(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return crud.get_items(db, models.Delivery, skip=skip, limit=limit)
 
@@ -1282,7 +1283,8 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
                 telefone = telefone.strip(" ")
                 a_tel = telefone.split(" ")
                 telefone = "".join(a_tel)
-                telefone = "55"+telefone
+                if "55" != telefone.slice(0, 2):
+                    telefone = "55"+telefone
                 print(telefone)
 
                 mensagem("leandro", "5511948447544", f"Seu pedido já está em rota!\n\n Código do Pedido: *{item.ordernumber}*")
@@ -1357,7 +1359,7 @@ async def upload_canhoto(order_number: str, chave_acesso: str, id_deliveries: in
 
     print(res)
 
-    crud.update_route_item_for_order_number(db, order_number, schemas.RouteItemUpdate(status="entregue"))
+    order = crud.update_route_item_for_order_number(db, order_number, schemas.RouteItemUpdate(status="entregue"))
     
 
     mensagem("leandro", "5511948447544", f"*Seu pedido foi entregue!*")
@@ -1380,6 +1382,53 @@ async def upload_canhoto(order_number: str, chave_acesso: str, id_deliveries: in
     return {"status": "sucesso", "path": file_path}
 
 
+@app.post("/notification/")
+async def notifica_pedido(orders: list[schemas.Pedido], db: Session = Depends(get_db), erp_db: Session = Depends(get_erp_db)):
+    # Cria a pasta se não existir
+
+    for index, item in enumerate(orders):
+        print(f"{index}: {item}")
+        
+        query_pedido = text("""
+            SELECT p.pedentend, p.pedentcid, p.pedentuf, p.pedentcep, p.pedentbair, e.emptelef as telefone
+            FROM pedido p
+            LEFT JOIN empresa e ON p.pedcliente = e.empresa
+            WHERE p.pedido = :numero_pedido
+            LIMIT 1
+        """)
+        result_pedido = erp_db.execute(query_pedido, {"numero_pedido": item.ordernumber})
+        pedido_row = result_pedido.fetchone()
+        
+        if not pedido_row:
+            continue
+        
+
+        delivery = schemas.DeliveryCreate(ordernumber=item.ordernumber,clientname=item.client_name,status="notified")
+
+
+        crud.create_delivery(db=db, delivery=delivery)
+
+
+
+        p_data = pedido_row._asdict() if hasattr(pedido_row, '_asdict') else dict(pedido_row._mapping)
+
+        print(p_data["telefone"])
+    
+        telefone = p_data['telefone']
+        telefone = telefone.replace("(", "")
+        telefone = telefone.replace(")", "")
+        telefone = telefone.replace("-", "")
+        telefone = telefone.strip(" ")
+        a_tel = telefone.split(" ")
+        telefone = "".join(a_tel)
+        prefixo = telefone[:2]
+        if "55" != prefixo:
+            telefone = "55"+telefone
+        print(telefone)
+
+        mensagem("leandro", "5511948447544", f"*Seu pedido já está em rota com uma transportadora parceira*\nCódigo do Pedido: {item.ordernumber}")
+
+    return {"status": "sucesso"}
 
 
 # --- (GPS) ---

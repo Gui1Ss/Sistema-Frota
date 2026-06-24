@@ -35,6 +35,8 @@ export default function EntregaPage() {
   const [numeroPedido, setNumeroPedido] = useState("");
   const [searchingPedido, setSearchingPedido] = useState(false);
   const [pedidosBuscados, setPedidosBuscados] = useState<any[]>([]);
+  const [confirmNotification, setConfirmaNotication] = useState(false);
+  const [notificandoPedido, setNotificandoPedido] = useState(false);
 
   const { data: deliveries, isLoading } = useQuery({
     queryKey: ["deliveries"],
@@ -68,6 +70,8 @@ export default function EntregaPage() {
         return "bg-blue-100 text-blue-700";
       case "entregue":
         return "bg-green-100 text-green-700";
+      case "notified":
+        return "bg-orange-100 text-orange-700";
       case "nao entregue":
         return "bg-red-100 text-red-700";
       default:
@@ -120,6 +124,49 @@ export default function EntregaPage() {
   useEffect(() => {
     console.log(pedidosBuscados);
   }, [pedidosBuscados]);
+
+  const handleNotificacaoRequest = async () => {
+    if (pedidosBuscados.length === 0) return;
+    setNotificandoPedido(true);
+    try {
+      const payload = [];
+
+      for (const p of pedidosBuscados) {
+        const formatacao = {
+          ordernumber: p.pedido,
+          sequencia: p.sequencia,
+          address: p.address,
+          neighborhood: p.neighborhood,
+          city: p.city,
+          state: p.state,
+          zipcode: p.zipcode,
+          client_name: p.client_name,
+          cnpj: p.cnpj,
+        };
+        payload.push(formatacao);
+      }
+
+      const response = await api.post(
+        `/notification/`,
+        JSON.stringify(payload),
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      const data = response.data;
+      console.log(data);
+      toast.success(
+        `Sucesso! ${pedidosBuscados.length} pedidos foram notificados aos clientes`
+      );
+      setPedidosBuscados([]);
+    } catch (error: any) {
+      console.log(error);
+    } finally {
+      setNotificandoPedido(false);
+    }
+  };
 
   return (
     <MainLayout>
@@ -216,12 +263,80 @@ export default function EntregaPage() {
                         </Button>
                       </div>
                     ))}
+                    <Button
+                      className="mt-3"
+                      onClick={() => {
+                        setNotificationDialog(false);
+                        setConfirmaNotication(true);
+                      }}
+                    >
+                      Notificar
+                    </Button>
                   </div>
                 )}
               </div>
             </div>
           </DialogContent>
         </Dialog>
+
+        <AlertDialog
+          open={confirmNotification}
+          onOpenChange={setConfirmaNotication}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar notificação?</AlertDialogTitle>
+            </AlertDialogHeader>
+            <AlertDialogDescription>
+              Ao clicar em confirmar, será enviada uma mensagem via Whatsapp
+              para os clientes dos respectivos pedidos:
+            </AlertDialogDescription>
+            <div className="flex flex-col w-full gap-2">
+              {pedidosBuscados.map((p, i) => (
+                <div
+                  key={i}
+                  className="p-3 flex items-center justify-between w-full border-2 rounded-sm bg-slate-50/50"
+                >
+                  <div>
+                    <p className="text-sm font-bold">
+                      #{p.pedido} - {p.client_name}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {p.address}
+                      {p.address_number}, {p.city}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      setPedidosBuscados(
+                        pedidosBuscados.filter((_, idx) => idx !== i)
+                      )
+                    }
+                    className="text-red-500"
+                  >
+                    <X size={16} />
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                onClick={() => {
+                  setConfirmaNotication(false);
+                  setNotificationDialog(true);
+                }}
+              >
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={handleNotificacaoRequest}>
+                Confirmar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <Card className="overflow-hidden border-slate-200 shadow-sm">
           <div className="overflow-x-auto">
@@ -274,7 +389,9 @@ export default function EntregaPage() {
                             ? "Em rota"
                             : delivery.status == "entregue"
                               ? "Entregue"
-                              : "erro"}
+                              : delivery.status == "notified"
+                                ? "Notificado"
+                                : "erro"}
                         </Badge>
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-600">

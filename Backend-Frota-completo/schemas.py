@@ -128,7 +128,7 @@ class RouteItemCreateWeb(BaseModel):
     ordernumber: Optional[str] = None
     sequence: Optional[int] = None
     status: Optional[str] = "pending"
-    telefone: str
+    telefone: Optional[str] = None
     address: Optional[str] = None
     neighborhood: Optional[str] = None
     city: Optional[str] = None
@@ -187,8 +187,8 @@ class WhatsAppNotification(WhatsAppNotificationBase):
 
 # --- Deliveries ---
 class DeliveryBase(BaseModel):
-    routeid: int
-    ordernumber: str
+    routeid: Optional[int] = None
+    ordernumber: Optional[str] = None
     clientname: Optional[str] = None
     status: Optional[str] = "Pendente"
     deliveredat: Optional[datetime] = None
@@ -223,3 +223,19 @@ class DeliveryApp(BaseModel):
     latitude: float
     longitude: float
     createdat: Optional[datetime] = None
+
+class Pedido(BaseModel):
+    ordernumber: Optional[str] = None
+    sequencia: Optional[int] = None
+    status: Optional[str] = "pending"
+    telefone: Optional[str] = None
+    address: Optional[str] = None
+    neighborhood: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zipcode: Optional[str] = None
+    address_number: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    client_name: Optional[str] = None
+    cnpj: Optional[str] = None
