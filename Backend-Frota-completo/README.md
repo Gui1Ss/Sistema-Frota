@@ -33,26 +33,20 @@ Como o seu sistema não possui interface gráfica, siga estes comandos via termi
    sudo apt install python3 python3-pip python3-venv -y
    ```
 
-2. **Clone ou mova os arquivos para uma pasta e acesse-a:**
-
-   ```bash
-   mkdir logistics-api && cd logistics-api
-   ```
-
-3. **Crie e ative um ambiente virtual (recomendado):**
+2. **Crie e ative um ambiente virtual (recomendado):**
 
    ```bash
    python3 -m venv venv
    source venv/bin/activate
    ```
 
-4. **Instale as dependências:**
+3. **Instale as dependências:**
 
    ```bash
    pip install -r requirements.txt
    ```
 
-5. **Crie o arquivo de variáveis de ambiente:**
+4. **Crie o arquivo de variáveis de ambiente:**
 
    ```bash
    cat << 'EOF' > .env
@@ -64,7 +58,7 @@ Como o seu sistema não possui interface gráfica, siga estes comandos via termi
    EOF
    ```
 
-6. **Executar a aplicação:**
+5. **Executar a aplicação:**
    ```bash
    uvicorn main:app --host 0.0.0.0 --port 8000
    ```
