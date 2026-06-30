@@ -1,5 +1,14 @@
 from sqlalchemy.orm import Session
+from passlib.context import CryptContext
 import models, schemas
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
 
 
 def get_dashboard(db: Session):
@@ -34,11 +43,18 @@ def delete_item(db: Session, model, item_id: int):
 
 # --- Drivers ---
 def create_driver(db: Session, driver: schemas.DriverCreate):
-    db_driver = models.Driver(**driver.model_dump())
+    driver_data = driver.model_dump()
+    password = driver_data.pop("password", None)
+    if password:
+        driver_data["passwordHash"] = get_password_hash(password)
+    db_driver = models.Driver(**driver_data)
     db.add(db_driver)
     db.commit()
     db.refresh(db_driver)
     return db_driver
+
+def get_driver_by_cpf(db: Session, cpf: str):
+    return db.query(models.Driver).filter(models.Driver.cpf == cpf).first()
 
 def update_driver(db: Session, driver_id: int, driver: schemas.DriverUpdate):
     db_driver = get_item(db, models.Driver, driver_id)
@@ -48,6 +64,10 @@ def update_driver(db: Session, driver_id: int, driver: schemas.DriverUpdate):
         db.commit()
         db.refresh(db_driver)
     return db_driver
+
+# def get_driver_app_dashboard(db: Session, cpf: str):
+#     db.
+
 
 # --- Vehicles ---
 def create_vehicle(db: Session, vehicle: schemas.VehicleCreate):
@@ -67,8 +87,18 @@ def update_vehicle(db: Session, vehicle_id: int, vehicle: schemas.VehicleUpdate)
     return db_vehicle
 
 # --- Routes ---
+import random
+
 def create_route(db: Session, route: schemas.RouteCreate):
-    db_route = models.Route(**route.model_dump())
+    route_data = route.model_dump()
+    if not route_data.get('color'):
+        # Gerar cor aleatória em formato HSL para garantir boa visibilidade
+        h = random.randint(0, 360)
+        s = random.randint(60, 90)
+        l = random.randint(40, 60)
+        route_data['color'] = f"hsl({h}, {s}%, {l}%)"
+        
+    db_route = models.Route(**route_data)
     db.add(db_route)
     db.commit()
     db.refresh(db_route)
@@ -101,6 +131,50 @@ def update_route_item(db: Session, item_id: int, item: schemas.RouteItemUpdate):
         db.commit()
         db.refresh(db_item)
     return db_item
+
+def update_route_item_for_order_number(
+    db: Session,
+    order_number: str,
+    item: schemas.RouteItemUpdate
+):
+    db_item = (
+        db.query(models.RouteItem)
+        .filter(models.RouteItem.ordernumber == order_number)
+        .first()
+    )
+
+    if not db_item:
+        return None
+
+    data = item.model_dump(exclude_unset=True)
+
+    # Remove o status para não atualizar route_items diretamente
+    new_status = data.pop("status", None)
+
+    # Atualiza todos os demais campos do route_item
+    for key, value in data.items():
+        setattr(db_item, key, value)
+
+    # Se veio status, atualiza a delivery correspondente
+    if new_status is not None:
+        delivery = (
+            db.query(models.Delivery)
+            .filter(
+                models.Delivery.ordernumber == db_item.ordernumber,
+                models.Delivery.routeid == db_item.routeid
+            )
+            .first()
+        )
+
+        if delivery:
+            delivery.status = new_status
+
+    db.commit()
+
+    db.refresh(db_item)
+
+    return db_item
+
 
 # --- GPS Tracking ---
 def create_gps_tracking(db: Session, tracking: schemas.GPSTrackingCreate):

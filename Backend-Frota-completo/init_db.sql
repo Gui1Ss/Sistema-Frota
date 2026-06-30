@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS routes (
     driverId INTEGER REFERENCES drivers(id),
     vehicleId INTEGER REFERENCES vehicles(id),
     status VARCHAR(20) DEFAULT 'pending',
+    color VARCHAR(255),
     createdAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updatedAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -36,7 +37,14 @@ CREATE TABLE IF NOT EXISTS route_items (
     routeId INTEGER REFERENCES routes(id),
     orderNumber VARCHAR(50),
     sequence INTEGER,
-    status VARCHAR(20) DEFAULT 'pending'
+    status VARCHAR(20) DEFAULT 'pending',
+    address VARCHAR(255),
+    neighborhood VARCHAR(100),
+    city VARCHAR(100),
+    state VARCHAR(50),
+    zipcode VARCHAR(20),
+    latitude FLOAT,
+    longitude FLOAT
 );
 
 -- Tabela de Rastreamento GPS

@@ -13,6 +13,8 @@ class Driver(Base):
     licensecategory = Column(String)
     licenseexpiry = Column(DateTime)
     status = Column(String, default="active")
+    email = Column(String, unique=True, index=True)
+    passwordHash = Column(String)
 
     routes = relationship("Route", back_populates="driver")
 
@@ -33,6 +35,7 @@ class Route(Base):
     driverid = Column(Integer, ForeignKey("drivers.id"))
     vehicleid = Column(Integer, ForeignKey("vehicles.id"))
     status = Column(String, default="pending")
+    color = Column(String) # Cor da rota em formato RGB ou HSL
     createdat = Column(DateTime(timezone=True), server_default=func.now())
     updatedat = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -50,6 +53,17 @@ class RouteItem(Base):
     ordernumber = Column(String)
     sequence = Column(Integer)
     status = Column(String, default="pending")
+    
+    # Novos campos para endereço e localização (snake_case)
+    address = Column(String)
+    neighborhood = Column(String)
+    city = Column(String)
+    state = Column(String)
+    zipcode = Column(String)
+    address_number = Column(String)
+    latitude = Column(Float)
+    longitude = Column(Float)
+    phone = Column(String)
 
     route = relationship("Route", back_populates="items")
 

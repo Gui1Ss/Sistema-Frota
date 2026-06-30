@@ -49,7 +49,7 @@ npm run dev
 pnpm dev
 ```
 
-**Abra:** http://localhost:3005
+**Abra:** http://192.168.1.178:3001
 
 ### PASSO 4: Em outro terminal, instalar Backend
 
@@ -58,19 +58,31 @@ cd ../Backend-Frota-completo
 pip install -r requirements.txt
 ```
 
+5. **Crie o arquivo de variáveis de ambiente:**
+
+   ```bash
+   cat << 'EOF' > .env
+   GENERAL_API_KEY= < COLOQUE A CHAVE DA API AQUI >
+   DB_ERP_URL = < URL DO BANCO ERP >
+   CANHOTOS_UPLOAD_DIR =  /var/www/uploads/canhotos
+   ORS_API_KEY = < COLOQUE A CHAVE DA API AQUI >
+   MOBIL_TRACKER_API_KEY = < COLOQUE A CHAVE DA API AQUI >
+   EOF
+   ```
+
 ### PASSO 5: Iniciar Backend
 
 ```bash
 python main.py
 ```
 
-**Backend em:** http://localhost:8000
+**Backend em:** http://192.168.1.178:8000
 
 ---
 
 ## ✅ TESTE RÁPIDO
 
-1. Abra http://localhost:3005
+1. Abra http://192.168.1.178:3001
 2. Clique em **"Motoristas"**
 3. Clique em **"Novo Motorista"**
 4. Preencha:
@@ -86,6 +98,7 @@ python main.py
 ## 📚 DOCUMENTAÇÃO
 
 ### Frontend
+
 ```
 sistema-frota-completo/
 ├── COMECE_AQUI.md              ← Leia primeiro
@@ -94,35 +107,22 @@ sistema-frota-completo/
 ```
 
 ### Backend
+
 ```
 Backend-Frota-completo/
-├── COMECE_AQUI.md              ← Leia primeiro
-├── INTEGRACAO_COMPLETA.md      ← Guia técnico
+├── README.md      ← Guia de instalação
 └── requirements.txt            ← Dependências
 ```
 
 ---
 
-## 🔧 O QUE FOI CORRIGIDO
-
-| Problema | Solução |
-|----------|---------|
-| **Mismatch de campos** | apiTransform.ts mapeia dados |
-| **useState não importado** | Adicionado import |
-| **Dados no formato errado** | Transformação automática |
-| **Erros não exibidos** | Tratamento de erros |
-| **Campos faltando** | Adicionados cnhValidade, categoria |
-
----
-
 ## 🔗 LINKS IMPORTANTES
 
-| Serviço | URL |
-|---------|-----|
-| Frontend | http://localhost:3005 |
-| Backend | http://localhost:8000 |
-| Swagger API | http://localhost:8000/docs |
-| ReDoc API | http://localhost:8000/redoc |
+| Serviço     | URL                            |
+| ----------- | ------------------------------ |
+| Frontend    | http://192.168.1.178:3001      |
+| Backend     | http://192.168.1.178:8000      |
+| Swagger API | http://192.168.1.178:8000/docs |
 
 ---
 
@@ -137,28 +137,33 @@ Backend-Frota-completo/
 ✅ Edição de Veículo  
 ✅ Deleção de Veículo  
 ✅ Tratamento de Erros  
-✅ Transformação de Dados  
+✅ Transformação de Dados
+✅ Buscar rotas geradas para visualização em mapa
 
 ---
 
 ## 🐛 TROUBLESHOOTING
 
-### "Port 3005 already in use"
+### "Port 3001 already in use"
+
 ```bash
 npm run dev -- --port 3006
 ```
 
 ### "Port 8000 already in use"
+
 ```bash
 python main.py --port 8001
 ```
 
 ### "ModuleNotFoundError"
+
 ```bash
 pip install -r requirements.txt
 ```
 
 ### "npm: command not found"
+
 Instale Node.js em https://nodejs.org/
 
 ---
@@ -175,10 +180,9 @@ Instale Node.js em https://nodejs.org/
 
 ## 💡 DICAS
 
-- **Swagger API:** Acesse http://localhost:8000/docs para testar endpoints
+- **Swagger API:** Acesse http://192.168.1.178:8000/docs para testar endpoints
 - **DevTools:** Pressione F12 no navegador para ver console
 - **Logs:** Verifique terminal para mensagens de erro
-- **Documentação:** Leia INTEGRACAO_COMPLETA.md para detalhes técnicos
 
 ---
 
@@ -191,5 +195,5 @@ Tudo está pronto para usar. Comece agora! 🎉
 ---
 
 **Versão:** 1.0  
-**Data:** 2026-05-20  
+**Data:** 2026-06-22  
 **Status:** Pronto para Produção
