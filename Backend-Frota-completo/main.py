@@ -217,14 +217,20 @@ def delete_delivery(delivery_id: int, db: Session = Depends(get_db)):
 
 
 
+<<<<<<< Updated upstream
 @app.get("/erp/pedidos/{numero_pedido}")
 def get_erp_pedido_by_numero(numero_pedido: str, db: Session = Depends(get_erp_db)):
+=======
+@app.get("/erp/pedidos/{num_nota}")
+def get_erp_pedido_by_numero(num_nota: str, db: Session = Depends(get_db), db_erp: Session = Depends(get_erp_db)):
+>>>>>>> Stashed changes
     """
     Buscar pedido do banco ERP com 3 queries:
     1. PEDIDO - informações do pedido
     2. DOCTOS - informações da nota (cliente, CNPJ, código de acesso)
     3. nfenotas - endereço da nota
     """
+<<<<<<< Updated upstream
     try:
         # Query 1: Buscar na tabela PEDIDO
         query_pedido = text("""
@@ -293,6 +299,74 @@ def get_erp_pedido_by_numero(numero_pedido: str, db: Session = Depends(get_erp_d
     except Exception as e:
         print(f"Erro ao buscar pedido: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erro ao buscar pedido do ERP: {str(e)}")
+=======
+
+    stmt = select(func.count()).select_from(models.RouteItem).where(models.RouteItem.ordernumber==num_nota)
+    print(stmt)
+    res = db.scalar(stmt)
+    print(res)
+    if(res==0):
+        try:
+            # Query 1: Buscar na tabela PEDIDO e EMPRESA (para telefone)
+            query_pedido = text("""
+                SELECT p.pedido, n.nfencolot as numero_nota, n.nfenlogde as rua, n.nfennumde as numero, n.nfennomud as cidade, n.nfenesemi as estado, n.nfencepem as cep, nfenbaide as bairro, e.emptelef as telefone
+                FROM nfenotas n
+                LEFT JOIN doctos d ON d.notcodac = n.nfencodac
+                LEFT JOIN pedido p ON p.pedido = d.notpedido
+                LEFT JOIN empresa e ON p.pedcliente = e.empresa
+                WHERE n.nfencolot = :num_nota AND p.deposito = 1 AND p.pedusu NOT LIKE '%MICHELE%'
+                LIMIT 1
+            """)
+            result_pedido = db_erp.execute(query_pedido, {"num_nota": num_nota})
+            pedido_row = result_pedido.fetchone()
+            
+            if not pedido_row:
+                raise HTTPException(status_code=404, detail="Pedido não encontrado! ")
+                
+            p_data = pedido_row._asdict() if hasattr(pedido_row, '_asdict') else dict(pedido_row._mapping)
+            
+            # Query 2: Buscar na tabela DOCTOS para nome do cliente e CNPJ
+            query_doctos = text("""
+                SELECT nosempant, nosempcgc FROM doctos
+                WHERE notpedido = :num_nota
+                LIMIT 1
+            """)
+            result_doctos = db_erp.execute(query_doctos, {"num_nota": p_data.get('pedido')})
+            doctos_row = result_doctos.fetchone()
+            d_data = doctos_row._asdict() if doctos_row and hasattr(doctos_row, '_asdict') else dict(doctos_row._mapping) if doctos_row else {}
+
+            # Query 3: Buscar nome da cidade
+            cidade_nome = ""
+            if p_data.get('pedentcid'):
+                query_cidade = text("SELECT cidnome FROM cidade WHERE cidade = :cid_id LIMIT 1")
+                result_cidade = db_erp.execute(query_cidade, {"cid_id": p_data['pedentcid']})
+                cidade_row = result_cidade.fetchone()
+                if cidade_row:
+                    cidade_nome = cidade_row[0]
+
+            # Retornar em snake_case para o frontend
+            return {
+                "pedido": p_data.get("pedido"),
+                "nota": num_nota,
+                "client_name": d_data.get('nosempant'),
+                "cnpj": d_data.get('nosempcgc'),
+                "telefone": p_data.get('telefone'),
+                "address": p_data.get('rua').strip() if p_data.get('rua') else None,
+                "address_number": p_data.get('numero') if p_data.get('numero') else None,
+                "neighborhood": p_data.get('bairro').strip() if p_data.get('bairro') else None,
+                "city": p_data.get("cidade").strip() if p_data.get("cidade") else None,
+                "state": p_data.get('estado').strip() if p_data.get('estado') else None,
+                "zipcode": str(p_data.get('cep')).strip() if str(p_data.get('cep')) else None
+            }
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"Erro ao buscar pedido: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Erro ao buscar pedido do ERP: {str(e)}")
+    else:
+        raise HTTPException(status_code=423, detail=f"Já existe uma rota com esse pedido!")
+>>>>>>> Stashed changes
 
 
 

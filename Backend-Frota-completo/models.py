@@ -32,6 +32,7 @@ class Route(Base):
     id = Column(Integer, primary_key=True, index=True)
     driverid = Column(Integer, ForeignKey("drivers.id"))
     vehicleid = Column(Integer, ForeignKey("vehicles.id"))
+    helper = Column(String, default="")
     status = Column(String, default="pending")
     createdat = Column(DateTime(timezone=True), server_default=func.now())
     updatedat = Column(DateTime(timezone=True), onupdate=func.now())

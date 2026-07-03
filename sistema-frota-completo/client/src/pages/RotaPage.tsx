@@ -50,6 +50,7 @@ export default function RotaPage() {
   const [numeroEndereco, setNumeroEndereco] = useState("");
   const [selectedDriver, setSelectedDriver] = useState("");
   const [selectedVehicle, setSelectedVehicle] = useState("");
+  const [pedidoBuscado, setPedidoBuscado] = useState<any>(null);
   const [pedidosBuscados, setPedidosBuscados] = useState<any[]>([]);
   const [searchingPedido, setSearchingPedido] = useState(false);
   const [confirmSaidaRotaId, setConfirmSaidaRotaId] = useState<number | null>(
@@ -80,18 +81,18 @@ export default function RotaPage() {
   const [editRoutePending, setEditRoutePending] = useState(false);
 
   interface RouteItem {
-    id: number;
-    routeid: number;
-    ordernumber: string;
-    sequence: number;
-    status: string;
+    id?: number;
+    routeid?: number;
+    ordernumber?: string;
+    sequence?: number;
+    status?: string;
     address: string;
     neighborhood: string;
     city: string;
     state: string;
     zipcode: string;
-    latitude: number;
-    longitude: number;
+    latitude?: number;
+    longitude?: number;
     address_number: string;
   }
 
@@ -233,30 +234,33 @@ export default function RotaPage() {
     try {
       const response = await api.get(`/erp/pedidos/${numeroPedido}`);
       const pedido = response.data;
-      if (pedidosBuscados.some(p => p.pedido === pedido.pedido)) {
-        toast.warning("Este pedido já foi adicionado");
-      } else {
-        setPedidosBuscados([
-          ...pedidosBuscados,
-          {
-            ...pedido,
-            sequencia: pedidosBuscados.length + 1,
-          },
-        ]);
-        setNumeroPedido("");
-        setNumeroEndereco("");
-        toast.success("Pedido adicionado");
-      }
+      setPedidoBuscado(pedido);
+      //   if (pedidosBuscados.some(p => p.pedido === pedido.pedido)) {
+      //     toast.warning("Este pedido já foi adicionado");
+      //   } else {
+      //     setPedidosBuscados([
+      //       ...pedidosBuscados,
+      //       {
+      //         ...pedido,
+      //         sequencia: pedidosBuscados.length + 1,
+      //       },
+      //     ]);
+      //     setNumeroPedido("");
+      //     setNumeroEndereco("");
+      //     toast.success("Pedido adicionado");
+      //   }
+      // } catch (error: any) {
+      //   if (error.response?.status == 404) {
+      //     toast.error("Pedido não encontrado no ERP");
+      //   } else if (error.response?.status == 423) {
+      //     toast.error("Já existe uma rota com esse pedido");
+      //   } else {
+      //     toast.error("Erro ao buscar pedido");
+      //   }
+      // } finally {
+      //   setSearchingPedido(false);
     } catch (error: any) {
-      if (error.response?.status == 404) {
-        toast.error("Pedido não encontrado no ERP");
-      } else if (error.response?.status == 423) {
-        toast.error("Já existe uma rota com esse pedido");
-      } else {
-        toast.error("Erro ao buscar pedido");
-      }
-    } finally {
-      setSearchingPedido(false);
+      console.log("BUSCANDO NOTA ERRO: " + error);
     }
   };
 
@@ -309,7 +313,7 @@ export default function RotaPage() {
           const response = await api.get(`/route-item/${editRouteItemId}`);
           console.log(response.data[0]);
           const resObj: RouteItem = response.data[0];
-          setEditStatus(resObj.status);
+          setEditStatus(resObj.status ?? "pending");
           setEditEndereco(resObj.address);
           setEditBairro(resObj.neighborhood);
           setEditCidade(resObj.city);
@@ -507,13 +511,16 @@ export default function RotaPage() {
 
         {/* Modal Nova Rota */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent
+            size="xl"
+            className="max-w-4xl max-h-[90vh] overflow-y-auto"
+          >
             <DialogHeader>
               <DialogTitle>Criar Nova Rota</DialogTitle>
             </DialogHeader>
             <div className="space-y-6 py-4">
-              <div className="grid grid-cols-1 md:grid-cols-2">
-                <div className="space-y-2">
+              <div className="grid grid-cols-6 md:grid-cols-6 gap-3">
+                <div className="space-y-2 col-span-2">
                   <Label>Motorista *</Label>
                   <Select
                     value={selectedDriver}
@@ -531,7 +538,26 @@ export default function RotaPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2 mr-10">
+                <div className="space-y-2 col-span-2">
+                  <Label>Ajudante</Label>
+                  <Input
+                    placeholder="Ex: José Augusto"
+                    value={numeroEndereco}
+                    onChange={e => setNumeroEndereco(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* <div className="space-y-2">
+                  <Label>Número do Endereço (Opcional)</Label>
+                  <Input
+                    placeholder="Ex: 123"
+                    value={numeroEndereco}
+                    onChange={e => setNumeroEndereco(e.target.value)}
+                  />
+                </div> */}
+                <div className="space-y-2 col-span-1">
                   <Label>Veículo *</Label>
                   <Select
                     value={selectedVehicle}
@@ -548,17 +574,6 @@ export default function RotaPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Número do Endereço (Opcional)</Label>
-                  <Input
-                    placeholder="Ex: 123"
-                    value={numeroEndereco}
-                    onChange={e => setNumeroEndereco(e.target.value)}
-                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Buscar Pedido no ERP</Label>
@@ -582,6 +597,129 @@ export default function RotaPage() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-6 gap-3 justify-item-stretch">
+                <div className="space-y-2 col-span-2">
+                  <Label>Status</Label>
+                  <Select value={editStatus} onValueChange={setEditStatus}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o Status do pedido" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pendente</SelectItem>
+                      <SelectItem value="in_progress">Entregando</SelectItem>
+                      <SelectItem value="entregue">Finalizado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 col-span-4">
+                  <Label>Endereço</Label>
+                  <Input
+                    placeholder="Ex: 123"
+                    value={pedidoBuscado?.address}
+                    onChange={e => setEditEndereco(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2 col-span-4">
+                  <Label>Bairro</Label>
+                  <Input
+                    placeholder="Ex: 123"
+                    value={pedidoBuscado?.neighborhood}
+                    onChange={e => setEditBairro(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label className="relative">
+                    Número
+                    <span className="text-red-600 absolute left-14 ">*</span>
+                  </Label>
+                  <Input
+                    placeholder="Ex: 123"
+                    value={pedidoBuscado?.address_number}
+                    onChange={e => setEditNumero(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2 col-span-3">
+                  <Label>Cidade</Label>
+                  <Input
+                    placeholder="Ex: 123"
+                    value={pedidoBuscado?.city}
+                    onChange={e => setEditCidade(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2 basis-20">
+                  <Label>Estado</Label>
+                  <Select
+                    value={pedidoBuscado?.state}
+                    onValueChange={setEditEstado}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um veículo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[
+                        "AC - Acre",
+                        "AL - Alagoas",
+                        "AP - Amapá",
+                        "AM - Amazona",
+                        "BA - Bahia",
+                        "CE - Ceará",
+                        "DF - Distrito Federal",
+                        "ES - Espírito Santo",
+                        "GO - Goiás",
+                        "MA - Maranhão",
+                        "MT - Mato Grosso",
+                        "MS - Mato Grosso do Sul",
+                        "MG - Minas Gerais",
+                        "PA - Pará",
+                        "PB - Paraíba",
+                        "PR - Paraná",
+                        "PE - Pernambuco",
+                        "PI - Piauí",
+                        "RJ - Rio de Janeiro",
+                        "RN - Rio Grande do Norte",
+                        "RS - Rio Grande do Sul",
+                        "RO - Rondônia",
+                        "RR - Roraima",
+                        "SC - Santa Catarina",
+                        "SP - São Paulo",
+                        "SE - Sergipe",
+                        "TO - Tocantins",
+                      ].map((v, i) => (
+                        <SelectItem key={i} value={v.substring(0, 2)}>
+                          {v}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label>CEP</Label>
+                  <Input
+                    placeholder="Ex: 123"
+                    value={
+                      String(pedidoBuscado?.zipcode).length > 5
+                        ? String(pedidoBuscado?.zipcode).slice(0, 5) +
+                          "-" +
+                          String(pedidoBuscado?.zipcode).slice(5)
+                        : pedidoBuscado?.zipcode
+                    }
+                    onChange={e =>
+                      setPedidoBuscado({
+                        ...pedidoBuscado,
+                        zipcode: Number(e.target.value.replace("-", "")),
+                      })
+                    }
+                  />
+                </div>
+                <Button
+                  className="p-5 col-end-7 col-span-3 mt-5"
+                  disabled={editRoutePending}
+                  // onClick={}
+                >
+                  <span>Adicionar Entrega</span>
+                </Button>
+              </div>
+
               {pedidosBuscados.length > 0 && (
                 <div className="space-y-3">
                   <Label>Pedidos Adicionados ({pedidosBuscados.length})</Label>
@@ -596,8 +734,7 @@ export default function RotaPage() {
                             #{p.pedido} - {p.client_name}
                           </p>
                           <p className="text-xs text-slate-500">
-                            {p.address}
-                            {p.address_number}, {p.city}
+                            {p.address}, {p.address_number}, {p.city}
                           </p>
                         </div>
                         <Button
@@ -666,7 +803,7 @@ export default function RotaPage() {
                           <span></span>
                         )}
                         <p className="text-sm text-slate-600 pt-2">
-                          {item.address}
+                          {item.address}, {item.address_number}
                         </p>
                         <p className="text-xs text-slate-400">
                           {item.neighborhood}, {item.city} - {item.state}
