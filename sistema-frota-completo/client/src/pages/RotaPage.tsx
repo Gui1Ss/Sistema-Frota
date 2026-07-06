@@ -49,6 +49,7 @@ export default function RotaPage() {
   const [numeroPedido, setNumeroPedido] = useState("");
   const [numeroEndereco, setNumeroEndereco] = useState("");
   const [selectedDriver, setSelectedDriver] = useState("");
+  const [selectedHelper, setSelectedHelper] = useState("");
   const [selectedVehicle, setSelectedVehicle] = useState("");
   const [pedidoBuscado, setPedidoBuscado] = useState<any>(null);
   const [pedidosBuscados, setPedidosBuscados] = useState<any[]>([]);
@@ -224,8 +225,43 @@ export default function RotaPage() {
   const resetForm = () => {
     setPedidosBuscados([]);
     setSelectedDriver("");
+    setSelectedHelper("");
     setSelectedVehicle("");
     setNumeroPedido("");
+    setPedidoBuscado(null);
+  };
+
+  const handleAddList = async () => {
+    try {
+      if (pedidosBuscados.some(p => p.ordernumber === pedidoBuscado.nota)) {
+        toast.warning("Este pedido já foi adicionado");
+      } else {
+        setPedidosBuscados([
+          ...pedidosBuscados,
+          {
+            ordernumber: pedidoBuscado.nota,
+            status: "pending",
+            address: pedidoBuscado.address,
+            neighborhood: pedidoBuscado.neighborhood,
+            city: pedidoBuscado.city,
+            state: pedidoBuscado.state,
+            zipcode: pedidoBuscado.zipcode,
+            address_number: pedidoBuscado.address_number,
+            sequence: pedidosBuscados.length + 1,
+            client_name: pedidoBuscado.client_name,
+            pedido: pedidoBuscado.pedido,
+          },
+        ]);
+        setNumeroPedido("");
+        setPedidoBuscado(null);
+        toast.success("Pedido adicionado");
+      }
+    } catch (error: any) {
+      toast.error("Erro ao buscar pedido");
+      console.log(error);
+    } finally {
+      setSearchingPedido(false);
+    }
   };
 
   const handleSearchPedido = async () => {
@@ -260,18 +296,31 @@ export default function RotaPage() {
       // } finally {
       //   setSearchingPedido(false);
     } catch (error: any) {
-      console.log("BUSCANDO NOTA ERRO: " + error);
+      if (error.response?.status == 404) {
+        toast.error("Pedido não encontrado no ERP");
+      } else if (error.response?.status == 423) {
+        toast.error("Já existe uma rota com esse pedido");
+      } else {
+        toast.error("Erro ao buscar pedido");
+      }
+    } finally {
+      setSearchingPedido(false);
     }
   };
 
   const handleCreateRoute = () => {
-    if (!selectedDriver || !selectedVehicle || pedidosBuscados.length === 0) {
+    if (
+      !selectedDriver ||
+      !selectedVehicle ||
+      !selectedHelper ||
+      pedidosBuscados.length === 0
+    ) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
     createRouteMutation.mutate({
       items: pedidosBuscados.map((p, index) => ({
-        ordernumber: p.pedido,
+        ordernumber: p.ordernumber,
         sequence: index + 1,
         status: "pending",
         telefone: p.telefone || "",
@@ -285,6 +334,7 @@ export default function RotaPage() {
       route: {
         driverid: parseInt(selectedDriver),
         vehicleid: parseInt(selectedVehicle),
+        helper: selectedHelper,
         status: "pending",
       },
     });
@@ -542,8 +592,8 @@ export default function RotaPage() {
                   <Label>Ajudante</Label>
                   <Input
                     placeholder="Ex: José Augusto"
-                    value={numeroEndereco}
-                    onChange={e => setNumeroEndereco(e.target.value)}
+                    value={selectedHelper}
+                    onChange={e => setSelectedHelper(e.target.value)}
                   />
                 </div>
               </div>
@@ -599,32 +649,29 @@ export default function RotaPage() {
 
               <div className="grid grid-cols-6 gap-3 justify-item-stretch">
                 <div className="space-y-2 col-span-2">
-                  <Label>Status</Label>
-                  <Select value={editStatus} onValueChange={setEditStatus}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o Status do pedido" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pendente</SelectItem>
-                      <SelectItem value="in_progress">Entregando</SelectItem>
-                      <SelectItem value="entregue">Finalizado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2 col-span-4">
                   <Label>Endereço</Label>
                   <Input
                     placeholder="Ex: 123"
-                    value={pedidoBuscado?.address}
-                    onChange={e => setEditEndereco(e.target.value)}
+                    value={pedidoBuscado?.address ?? ""}
+                    onChange={e =>
+                      setPedidoBuscado({
+                        ...pedidoBuscado,
+                        address: e.target.value,
+                      })
+                    }
                   />
                 </div>
-                <div className="space-y-2 col-span-4">
+                <div className="space-y-2 col-span-2">
                   <Label>Bairro</Label>
                   <Input
                     placeholder="Ex: 123"
-                    value={pedidoBuscado?.neighborhood}
-                    onChange={e => setEditBairro(e.target.value)}
+                    value={pedidoBuscado?.neighborhood ?? ""}
+                    onChange={e =>
+                      setPedidoBuscado({
+                        ...pedidoBuscado,
+                        neighborhood: e.target.value,
+                      })
+                    }
                   />
                 </div>
                 <div className="space-y-2 col-span-2">
@@ -634,23 +681,38 @@ export default function RotaPage() {
                   </Label>
                   <Input
                     placeholder="Ex: 123"
-                    value={pedidoBuscado?.address_number}
-                    onChange={e => setEditNumero(e.target.value)}
+                    value={pedidoBuscado?.address_number ?? ""}
+                    onChange={e =>
+                      setPedidoBuscado({
+                        ...pedidoBuscado,
+                        address_number: e.target.value,
+                      })
+                    }
                   />
                 </div>
                 <div className="space-y-2 col-span-3">
                   <Label>Cidade</Label>
                   <Input
                     placeholder="Ex: 123"
-                    value={pedidoBuscado?.city}
-                    onChange={e => setEditCidade(e.target.value)}
+                    value={pedidoBuscado?.city ?? ""}
+                    onChange={e =>
+                      setPedidoBuscado({
+                        ...pedidoBuscado,
+                        city: e.target.value,
+                      })
+                    }
                   />
                 </div>
                 <div className="space-y-2 basis-20">
                   <Label>Estado</Label>
                   <Select
-                    value={pedidoBuscado?.state}
-                    onValueChange={setEditEstado}
+                    value={pedidoBuscado?.state ?? ""}
+                    onValueChange={e =>
+                      setPedidoBuscado({
+                        ...pedidoBuscado,
+                        state: e,
+                      })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione um veículo" />
@@ -697,11 +759,13 @@ export default function RotaPage() {
                   <Input
                     placeholder="Ex: 123"
                     value={
-                      String(pedidoBuscado?.zipcode).length > 5
-                        ? String(pedidoBuscado?.zipcode).slice(0, 5) +
-                          "-" +
-                          String(pedidoBuscado?.zipcode).slice(5)
-                        : pedidoBuscado?.zipcode
+                      String(pedidoBuscado?.zipcode) === "undefined"
+                        ? ""
+                        : String(pedidoBuscado?.zipcode).length > 5
+                          ? String(pedidoBuscado?.zipcode).slice(0, 5) +
+                            "-" +
+                            String(pedidoBuscado?.zipcode).slice(5)
+                          : pedidoBuscado?.zipcode
                     }
                     onChange={e =>
                       setPedidoBuscado({
@@ -713,8 +777,7 @@ export default function RotaPage() {
                 </div>
                 <Button
                   className="p-5 col-end-7 col-span-3 mt-5"
-                  disabled={editRoutePending}
-                  // onClick={}
+                  onClick={handleAddList}
                 >
                   <span>Adicionar Entrega</span>
                 </Button>
@@ -730,10 +793,13 @@ export default function RotaPage() {
                         className="p-3 flex items-center justify-between bg-slate-50/50"
                       >
                         <div>
-                          <p className="text-sm font-bold">
-                            #{p.pedido} - {p.client_name}
+                          <p className="text-base font-bold">
+                            Nota: {p.ordernumber} - {p.client_name}
                           </p>
-                          <p className="text-xs text-slate-500">
+                          <p className="text-sm font-bold pl-2">
+                            Pedido: #{p.pedido}
+                          </p>
+                          <p className="text-xs text-slate-500 pl-2">
                             {p.address}, {p.address_number}, {p.city}
                           </p>
                         </div>
