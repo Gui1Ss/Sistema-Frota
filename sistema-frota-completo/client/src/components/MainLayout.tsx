@@ -1,6 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
-import { BarChart3, Truck, Users, MapPin, Package, LogOut, Menu, X } from "lucide-react";
+import {
+  BarChart3,
+  Truck,
+  Users,
+  MapPin,
+  Package,
+  LogOut,
+  Menu,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -16,11 +25,16 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const logout = () => setLocation("/");
 
   const menuItems = [
-    { icon: BarChart3, label: "Dashboard", path: "/dashboard" },
-    { icon: Users, label: "Motoristas", path: "/motoristas" },
-    { icon: Truck, label: "Veículos", path: "/veiculos" },
-    { icon: MapPin, label: "Rotas", path: "/rotas" },
-    { icon: Package, label: "Entregas", path: "/entregas" },
+    {
+      icon: BarChart3,
+      label: "Dashboard",
+      path: "/dashboard",
+      type: "desktop",
+    },
+    { icon: Users, label: "Motoristas", path: "/motoristas", type: "desktop" },
+    { icon: Truck, label: "Veículos", path: "/veiculos", type: "desktop" },
+    { icon: MapPin, label: "Rotas", path: "/rotas", type: "mobile" },
+    { icon: Package, label: "Entregas", path: "/entregas", type: "desktop" },
   ];
 
   const isActive = (path: string) => location === path;
@@ -30,15 +44,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          "bg-slate-900 text-white transition-all duration-300 flex flex-col",
-          sidebarOpen ? "w-64" : "w-20"
+          "bg-slate-900 text-white transition-all duration-300 flex flex-col w-0",
+          sidebarOpen ? "sm:w-64" : "sm:w-20"
         )}
       >
         {/* Header */}
-        <div className="p-4 border-b border-slate-700 flex items-center justify-between">
-          {sidebarOpen && (
-            <h1 className="text-xl font-bold">Logística</h1>
-          )}
+        <div className="p-3 border-b border-slate-700 flex items-center justify-between hidden sm:flex">
+          {sidebarOpen && <h1 className="text-xl font-bold">Logística</h1>}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
@@ -49,21 +61,24 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
         {/* Menu */}
         <nav className="flex-1 p-4 space-y-2">
-          {menuItems.map((item) => {
+          {menuItems.map(item => {
             const Icon = item.icon;
             return (
               <button
                 key={item.path}
                 onClick={() => setLocation(item.path)}
                 className={cn(
-                  "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
+                  "sm:w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
                   isActive(item.path)
                     ? "bg-blue-600 text-white"
-                    : "text-slate-300 hover:bg-slate-800"
+                    : "text-slate-300 hover:bg-slate-800",
+                  item.type != "mobile" && "hidden sm:flex"
                 )}
               >
                 <Icon size={20} />
-                {sidebarOpen && <span>{item.label}</span>}
+                {sidebarOpen && (
+                  <span className="hidden sm:flex">{item.label}</span>
+                )}
               </button>
             );
           })}
@@ -94,7 +109,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
         {/* Top Bar */}
         <header className="bg-white border-b border-slate-200 px-6 py-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-slate-900">Sistema de Logística</h2>
+            <h2 className="text-2xl font-bold text-slate-900">
+              Sistema de Logística
+            </h2>
             <div className="text-sm text-slate-600">
               {new Date().toLocaleDateString("pt-BR")}
             </div>
@@ -103,9 +120,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
         {/* Content */}
         <main className="flex-1 overflow-auto bg-slate-50">
-          <div className="p-6">
-            {children}
-          </div>
+          <div className="p-6">{children}</div>
         </main>
       </div>
     </div>

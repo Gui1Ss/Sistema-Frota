@@ -9,6 +9,7 @@ import MotoristaPage from "./pages/MotoristaPage";
 import VeiculoPage from "./pages/VeiculoPage";
 import RotaPage from "./pages/RotaPage";
 import EntregaPage from "./pages/EntregaPage";
+import { isDesktop } from "react-device-detect";
 
 function Router() {
   return (
@@ -18,9 +19,7 @@ function Router() {
       <Route path="/veiculos" component={VeiculoPage} />
       <Route path="/rotas" component={RotaPage} />
       <Route path="/entregas" component={EntregaPage} />
-      <Route path="/">
-        <Redirect to="/dashboard" />
-      </Route>
+      <Route path="/" component={isDesktop ? DashboardPage : RotaPage} />
       <Route component={NotFound} />
     </Switch>
   );

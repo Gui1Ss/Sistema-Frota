@@ -1,18 +1,29 @@
-from fastapi import FastAPI, Depends, HTTPException, WebSocket
-from sqlalchemy.orm import Session
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
+from fastapi.responses import FileResponse
+from sqlalchemy.orm import Session, aliased
 from typing import List
-import models, schemas, crud
+import models, schemas, crud, cria_roteiro
 from database import engine, get_db
 import requests
 import json
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, select, func, or_
+from typing import Optional
+from datetime import datetime, timedelta, time
+import shutil
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 
-apikey = 'citrix21'
+apikey = os.getenv("GENERAL_API_KEY")
+ORS_KEY = os.getenv("ORS_API_KEY")
+MT_KEY = os.getenv("MOBIL_TRACKER_API_KEY")
 
 # Conexão com banco ERP
-ERP_DATABASE_URL = "postgresql://postgres:postgres@192.168.1.17:5432/salutem"
+ERP_DATABASE_URL = os.getenv("DB_ERP_URL")
 erp_engine = create_engine(ERP_DATABASE_URL)
+
+UPLOAD_DIR = os.getenv("ROTEIROS_UPLOAD_DIR") 
 
 def get_erp_db():
     """Conexão com banco ERP"""
@@ -25,7 +36,7 @@ def get_erp_db():
         db.close()
 
 def mensagem(instance: str, number: str, text: str):
-    r = requests.post(f"http://192.168.1.171:8080/message/sendText/{instance}", json={
+    r = requests.post(f"http://192.168.1.178:8080/message/sendText/{instance}", json={
         "number": number,
         "text": text
     }, headers={
@@ -50,9 +61,54 @@ app.add_middleware(
 # --- WHATSAPP MESSAGES ---
 
 @app.post("/teste/")
-def send_message():
-    mensagem("leandro", "5511948447544", "Olá, Teste de API!")
-    return "OK"
+def send_message(db: Session = Depends(get_db)):
+    mensagem("Matheus", "5511964383702", "Olá, Teste de API!")
+    # stmt = select(models.Driver).join(models.Route, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == "12345678902")
+    # stmt2 = select(func.count()).select_from(models.Route).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == "12345678902")
+    # res = db.execute(stmt)
+    # doing = db.query(models.Delivery).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == "12345678902").where(models.Delivery.deliveredat.is_(None)).count()
+    # did = db.query(models.Delivery).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == "12345678902").where(models.Delivery.deliveredat.is_not(None)).count()
+    # rota = db.query(models.Route.id, models.Route.createdat).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == "12345678902").where(models.Route.status == 'in_progress').first()
+    # # res = db.query(models.Route).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == "12345678902").count()
+    # # print(stmt2)
+    # # json_out = json.dumps(res, indent=4)
+    # print(rota)
+    # return {
+    #     "emAndamento": doing,
+    #     "concluidas": did,
+    #     "rotaAtual": {
+    #         "id": rota[0],
+    #         "createdat": rota[1]
+    #     }
+    # }
+
+
+# --- APP DASHBOARD ---
+
+@app.get("/app/dashboard/{cpf}")
+def get_app_dashboard(cpf: str, db: Session = Depends(get_db)):
+    doing = db.query(models.Delivery).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == cpf).where(models.Delivery.deliveredat.is_(None)).count()
+    did = db.query(models.Delivery).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == cpf).where(models.Delivery.status == 'entregue').count()
+    stmt = select(models.Route.id, models.Route.createdat).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == cpf).where(models.Route.status == 'in_progress') 
+    rota = db.query(models.Route.id, models.Route.createdat).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == cpf).where(models.Route.status == 'in_progress').first()
+    # res = db.query(models.Route).join(models.Driver, models.Driver.id == models.Route.driverid).where(models.Driver.cpf == "12345678902").count()
+    print(stmt)
+    # json_out = json.dumps(res, indent=4)
+    payload={
+        "emAndamento": doing,
+        "concluidas": did,
+    }
+    print(rota)
+    if rota is not None: 
+        rotaAtual = {
+            "id": rota[0],
+            "createdat": rota[1]
+        }
+        payload["rotaAtual"] = rotaAtual
+    print(rota)
+    return  payload
+
+
 
 
 
@@ -67,6 +123,33 @@ def create_driver(driver: schemas.DriverCreate, db: Session = Depends(get_db)):
 @app.get("/drivers/", response_model=List[schemas.Driver])
 def read_drivers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return crud.get_items(db, models.Driver, skip=skip, limit=limit)
+
+@app.get("/drivers/livre", response_model=List[schemas.Driver])
+def read_drivers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    RouteSub = aliased(models.Route)
+
+    last_route_id = (
+        select(RouteSub.id)
+        .where(RouteSub.driverid == models.Driver.id)
+        .order_by(RouteSub.createdat.desc())
+        .limit(1)
+        .scalar_subquery()
+    )
+
+    return (
+        db.query(models.Driver)
+        .outerjoin(
+            models.Route,
+            models.Route.id == last_route_id
+        )
+        .filter(
+            or_(
+                models.Route.status == "entregue",
+                models.Route.id.is_(None)
+            )
+        )
+        .all()
+    )
 
 @app.get("/drivers/{driver_id}", response_model=schemas.Driver)
 def read_driver(driver_id: int, db: Session = Depends(get_db)):
@@ -98,6 +181,34 @@ def create_vehicle(vehicle: schemas.VehicleCreate, db: Session = Depends(get_db)
 def read_vehicles(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return crud.get_items(db, models.Vehicle, skip=skip, limit=limit)
 
+@app.get("/vehicles/livres", response_model=List[schemas.Vehicle])
+def read_vehicles(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    RouteSub = aliased(models.Route)
+
+    last_route_id = (
+        select(RouteSub.id)
+        .where(RouteSub.vehicleid == models.Vehicle.id)
+        .order_by(RouteSub.createdat.desc())
+        .limit(1)
+        .scalar_subquery()
+    )
+
+    return (
+        db.query(models.Vehicle)
+        .outerjoin(
+            models.Route,
+            models.Route.id == last_route_id
+        )
+        .filter(
+            or_(
+                models.Route.status == "entregue",
+                models.Route.id.is_(None)
+            )
+        )
+        .all()
+    )
+        
+
 @app.put("/vehicles/{vehicle_id}", response_model=schemas.Vehicle)
 def update_vehicle(vehicle_id: int, vehicle: schemas.VehicleUpdate, db: Session = Depends(get_db)):
     return crud.update_vehicle(db, vehicle_id, vehicle)
@@ -111,38 +222,231 @@ def delete_vehicle(vehicle_id: int, db: Session = Depends(get_db)):
 
 # --- ROUTES ENDPOINTS ---
 
-
+@app.get("/testerota/")
+def testerota(route: schemas.RouteWeb, db: Session = Depends(get_db)):
+    lista_pedidos = route.items
+    for i in lista_pedidos:
+        res = db.scalars(select(models.RouteItem).where(models.RouteItem.ordernumber == i.ordernumber)).first()
+        if res.ordernumber=="41480":
+            raise HTTPException(status_code=409, detail="Já existe uma rota com essa nota")
+    return res
 
 
 @app.post("/routes/", response_model=schemas.RouteWeb)
-def create_route(route: schemas.RouteWeb, db: Session = Depends(get_db)):
+def create_route(route: schemas.RouteWeb, db: Session = Depends(get_db), erp_db: Session = Depends(get_erp_db)):
 
     lista_pedidos = route.items
+
+    
+    for i in lista_pedidos:
+        if(i.ordernumber != ""):
+            res = db.scalars(select(models.RouteItem).where(models.RouteItem.ordernumber == i.ordernumber)).first()
+            if(res != None):
+                if res.ordernumber==i.ordernumber:
+                    raise HTTPException(status_code=409, detail="Já existe uma rota com essa nota")
 
     nova_rota = crud.create_route(db=db, route=route.route)
 
     for i in lista_pedidos:
+        # Tenta buscar geolocalização se não houver latitude/longitude
+        latitude = i.latitude
+        longitude = i.longitude
+        
+        if not latitude or not longitude:
+            try:
+                # 1. Tenta ViaCEP para garantir o endereço correto pelo CEP
+                res_cep = requests.get(f"https://viacep.com.br/ws/{i.zipcode}/json/")
+                if res_cep.status_code == 200:
+                    dados_cep = res_cep.json()
+                    logradouro = dados_cep.get("logradouro", i.address)
+                    bairro = dados_cep.get("bairro", i.neighborhood)
+                    cidade = dados_cep.get("localidade", i.city)
+                    estado = dados_cep.get("uf", i.state)
+                    
+                    # Monta endereço completo para o Nominatim
+                    # Se tiver número, adiciona na busca
+                    endereco_busca = f"{logradouro}, {i.address_number if i.address_number else ''}, {bairro}, {cidade}, {estado}, Brasil"
+                    
+                    # 2. Busca coordenadas no Nominatim
+                    url_nominatim = "https://nominatim.openstreetmap.org/search"
+                    parametros = {
+                        "q": endereco_busca,
+                        "format": "json",
+                        "limit": 1
+                    }
+                    headers = { "User-Agent": "SistemaFrota/1.0" }
+                    print(parametros)
+                    res_geo = requests.get(url_nominatim, params=parametros, headers=headers)
+                    resultado = res_geo.json()
+                    
+                    if resultado:
+                        latitude = float(resultado[0]["lat"])
+                        longitude = float(resultado[0]["lon"])
+            except Exception as e:
+                print(f"Erro na geolocalização automática: {str(e)}")
+
+        telefone = ""
+
+        if (i.ordernumber):
+            query_pedido = text("""
+                SELECT p.pedentend, p.pedentcid, p.pedentuf, p.pedentcep, p.pedentbair, e.emptelef as telefone
+                FROM pedido p
+                LEFT JOIN empresa e ON p.pedcliente = e.empresa
+                LEFT JOIN doctos d ON p.pedido = d.notpedido
+                LEFT JOIN nfenotas n ON d.notcodac = n.nfencodac
+                WHERE n.nfencolot = :numero_nota
+                LIMIT 1;  
+            """)
+            result_pedido = erp_db.execute(query_pedido, {"numero_nota": i.ordernumber})
+            pedido_row = result_pedido.fetchone()
+            
+            if not pedido_row:
+                continue
+            
+            p_data = pedido_row._asdict() if hasattr(pedido_row, '_asdict') else dict(pedido_row._mapping)
+
+            telefone = p_data['telefone']
+            telefone = telefone.replace("(", "")
+            telefone = telefone.replace(")", "")
+            telefone = telefone.replace("-", "")
+            telefone = telefone.strip(" ")
+            a_tel = telefone.split(" ")
+            telefone = "".join(a_tel)
+            print(telefone[:2])
+            if "55" != telefone[:2]:
+                telefone = "55"+telefone
+        print(telefone)
+
+        mensagem("Matheus", "5511964383702", f"Seu pedido já está sendo separado e será preparado para envio em breve!\n\n Código do Pedido: *{i.ordernumber}*\n Seu pedido será entregue no seguinte endereço: *{i.address}, {i.address_number} - {i.neighborhood}, {i.city} - {i.state}, {i.zipcode}*\n\n *OBS*: Caso haja algum problema com o pedido, entre em contato com a empresa para mais informações.")
+
         item_data = {
             "routeid": nova_rota.id,
             "ordernumber": i.ordernumber,
             "sequence": i.sequence,
-            "status": i.status
+            "status": i.status,
+            "address": i.address,
+            "neighborhood": i.neighborhood,
+            "city": i.city,
+            "state": i.state,
+            "zipcode": i.zipcode,
+            "address_number": i.address_number,
+            "latitude": latitude,
+            "longitude": longitude,
+            "phone": telefone,
+            "reason": i.reason,
         }
+
+        # print(item_data)
 
         crud.create_route_item(db=db, item=item_data)
 
-        print(i.telefone)
-        mensagem("leandro", "5511975534028", f"Seu pedido já está sendo separado!\n - Número da rota: {nova_rota.id}\n - Número do pedido: {i.ordernumber}\n *STATUS*: {i.status}")
-        mensagem("leandro", "5511989642157", f"Seu pedido já está sendo separado!\n - Número da rota: {nova_rota.id}\n - Número do pedido: {i.ordernumber}\n *STATUS*: {i.status}")
+        # print(i.telefone)
+        # mensagem("leandro", "5511975534028", f"Seu pedido já está sendo separado!\n - Número da rota: {nova_rota.id}\n - Número do pedido: {i.ordernumber}\n *STATUS*: {i.status}")
+        # mensagem("leandro", "5511989642157", f"Seu pedido já está sendo separado!\n - Número da rota: {nova_rota.id}\n - Número do pedido: {i.ordernumber}\n *STATUS*: {i.status}")
 
     return {
         "route": nova_rota,
         "items": lista_pedidos
     }
 
-@app.get("/routes/", response_model=List[schemas.Route])
-def read_routes(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return crud.get_items(db, models.Route, skip=skip, limit=limit)
+@app.get("/routes/")
+def read_routes(db: Session = Depends(get_db)):
+    result = (
+    db.query(
+        models.Route.id,
+        models.Route.driverid,
+        models.Route.helper,
+        models.Route.vehicleid,
+        models.Route.status,
+        models.Route.color,
+        models.Route.createdat,
+        models.Route.updatedat,
+        models.Vehicle.name.label("vehicle_name"),
+        models.Vehicle.plate.label("plate"),
+        models.Driver.name.label("driver_name")
+    )
+    .join(models.Vehicle, models.Vehicle.id == models.Route.vehicleid)
+    .join(models.Driver, models.Driver.id == models.Route.driverid)
+    .all()
+    )
+
+    res = []
+
+    for route in result:
+        stmt = select(models.Delivery.id.label("iddelivery"), models.Delivery, models.RouteItem.sequence, models.RouteItem.address, models.RouteItem.neighborhood, models.RouteItem.city, models.RouteItem.state, models.RouteItem.zipcode, models.RouteItem.address_number).join(models.Route, models.Route.id == models.Delivery.routeid).where(models.Delivery.routeid == route.id).where(models.RouteItem.ordernumber == models.Delivery.ordernumber).order_by(models.RouteItem.sequence)
+        # print(stmt)
+
+
+
+            # SELECT deliveries.id AS iddelivery, r.id AS routeid, deliveries.ordernumber, deliveries.clientname, deliveries.status, deliveries.deliveredat, r.sequence, r.address, r.neighborhood, r.city, r.state, r.zipcode, r.address_number, r.reason
+            # FROM route_items AS r 
+            # LEFT JOIN routes ON routes.id = r.routeid
+        # LEFT JOIN deliveries ON deliveries.ordernumber = r .ordernumber
+
+        items = db.query(models.Delivery.id.label("iddelivery"), models.RouteItem.id.label("route_itemid"), models.RouteItem.routeid, models.Delivery.ordernumber, models.Delivery.clientname, models.Delivery.status, models.Delivery.deliveredat, models.RouteItem.sequence, models.RouteItem.address, models.RouteItem.address_number, models.RouteItem.neighborhood, models.RouteItem.city, models.RouteItem.state, models.RouteItem.zipcode, models.RouteItem.address_number, models.RouteItem.reason).outerjoin(models.Route, models.Route.id == models.RouteItem.routeid).outerjoin(models.Delivery, models.Delivery.ordernumber == models.RouteItem.ordernumber).order_by(models.RouteItem.sequence).where(models.RouteItem.routeid == route.id).all()
+        # itemsR = db.query(models.RouteItem).join(models.Route, models.Route.id == models.RouteItem.routeid).where(models.RouteItem.routeid == route.id).all()
+                # items = db.query(models.Delivery.id.label("iddelivery"), models.RouteItem.id.label(routeid), models.Delivery.ordernumber, models.Delivery.clientname, models.Delivery.status, models.Delivery.deliverdat, models.RouteItem.sequence, models.RouteItem.address, models.RouteItem.address_number, models.RouteItem.neighborhood, models.RouteItem.city, models.RouteItem.state, models.RouteItem.zipcode, models.RouteItem.address_number, models.RouteItem.reason).outerjoin(models.Route, models.Route.id == models.RouteItem.routeid).outerjoin(models.Delivery, models.Delivery.ornumber = models.Delivery.).where(models.Delivery.routeid == route.id).where(models.RouteItem.ordernumber == models.Delivery.ordernumber).order_by(models.RouteItem.sequence).all()
+
+
+        # print(items)
+        if not items:
+            
+            # print(items)
+            
+            print(f"PEDIDOS DA ROTA [{route.id}] NÃO CONSEGUIRAM SER PEGOS")
+            # continue
+         
+        res.append( {
+            "id": route.id,
+            "driverid": route.driverid,
+            "vehicleid": route.vehicleid,
+            "status": route.status,
+            "color": route.color,
+            "createdat": route.createdat,
+            "updatedat": route.updatedat,
+            "vehicle_name": route.vehicle_name,
+            "plate": route.plate,
+            "driver_name": route.driver_name,
+            "helper": route.helper,
+            "problem": False,
+            "routes_items": [{
+                "id": item.iddelivery,
+                "route_item_id": item.route_itemid,
+                "routeid": item.routeid,
+                "ordernumber": item.ordernumber,
+                "clientname": item.clientname,
+                "address": item.address,
+                "address_number": item.address_number,
+                "neighborhood": item.neighborhood,
+                "city": item.city,
+                "state": item.state,
+                "zipcode": item.zipcode,
+                "sequence": item.sequence,
+                "reason": item.reason,
+            } for item in items],
+        })
+        # print(res)
+
+
+    for i in res:
+        items = db.query(models.RouteItem).join(models.Route, models.Route.id == models.RouteItem.routeid).where(models.Route.id == i["id"]).all()
+        for item in items:
+            # print(dir(item))
+            # print(item.status)
+            if(item.latitude == None or item.longitude == None):
+                i["problem"]=True
+                break
+            
+
+    # print(res)
+
+    return res
+
+    # return [row._asdict() for row in result]
+
+@app.get("/routes/{id}", response_model=List[schemas.Route])
+def read_routes(id: int, db: Session = Depends(get_db)):
+    return crud.get_item(db, model=models.Route, item_id=id)
 
 @app.put("/routes/{route_id}", response_model=schemas.Route)
 def update_route(route_id: int, route: schemas.RouteUpdate, db: Session = Depends(get_db)):
@@ -150,13 +454,51 @@ def update_route(route_id: int, route: schemas.RouteUpdate, db: Session = Depend
 
 @app.delete("/routes/{route_id}")
 def delete_route(route_id: int, db: Session = Depends(get_db)):
+    # Para remover uma rota, só será possível caso todas as entregas/deliverys tenham sido excluídos
+    deliveries_count = db.query(models.Delivery).filter(models.Delivery.routeid == route_id).count()
+    if deliveries_count > 0:
+        raise HTTPException(status_code=400, detail="Não é possível excluir uma rota que possui entregas vinculadas. Exclua as entregas primeiro.")
+    
+    # Excluir itens da rota primeiro
+    db.query(models.RouteItem).filter(models.RouteItem.routeid == route_id).delete()
+    # Excluir rastreamento
+    db.query(models.GPSTracking).filter(models.GPSTracking.routeid == route_id).delete()
+    # Excluir notificações
+    db.query(models.WhatsAppNotification).filter(models.WhatsAppNotification.routeid == route_id).delete()
+    
     crud.delete_item(db, models.Route, route_id)
-    return {"message": "Route deleted"}
+    return {"message": "Rota excluída com sucesso"}
+
+
 
 
 
 # --- ROUTE ITEMS ENDPOINTS ---
 
+
+
+
+@app.delete("/route-items/{item_id}")
+def delete_route_item(item_id: int, db: Session = Depends(get_db)):
+    item = db.query(models.RouteItem).filter(models.RouteItem.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item não encontrado")
+    
+    rota = db.query(models.Route).filter(models.Route.id == item.routeid).first()
+    
+    # Para remover um pedido, só será possível caso a rota não tenha sido despachada (status != 'in_progress')
+    # Caso já tenha saído, só será possível remover se o delivery do pedido tiver sido removido
+    if rota.status == "in_progress":
+        delivery = db.query(models.Delivery).filter(
+            models.Delivery.routeid == item.routeid,
+            models.Delivery.ordernumber == item.ordernumber
+        ).first()
+        if delivery:
+            raise HTTPException(status_code=400, detail="Não é possível remover um pedido de uma rota em andamento que ainda possui entrega vinculada. Exclua a entrega primeiro.")
+            
+    db.delete(item)
+    db.commit()
+    return {"message": "Pedido removido da rota"}
 
 
 @app.post("/route-items/", response_model=schemas.RouteItem)
@@ -166,6 +508,20 @@ def create_route_item(item: schemas.RouteItemCreate, db: Session = Depends(get_d
 @app.get("/route-items/", response_model=List[schemas.RouteItem])
 def read_route_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return crud.get_items(db, models.RouteItem, skip=skip, limit=limit)
+
+
+@app.get("/route-item/{ordernumber}", response_model=List[schemas.RouteItem])
+def read_route_item(ordernumber: int, db: Session = Depends(get_db)):
+    return db.query(models.RouteItem).where(models.RouteItem.ordernumber == ordernumber)
+
+@app.get("/route-item/id/{id}", response_model=List[schemas.RouteItem])
+def read_route_item_by_id(id: str, db: Session = Depends(get_db)):
+    return db.query(models.RouteItem).where(models.RouteItem.id == id)
+
+@app.put("/route-item/{id}", response_model=schemas.RouteItemUpdate)
+def update_route_item(id: str, route_item: schemas.RouteItemUpdate, db: Session = Depends(get_db)):
+    return crud.update_route_item_for_id(db, id, route_item)
+
 
 # --- GPS TRACKING ENDPOINTS ---
 @app.post("/gps-tracking/", response_model=schemas.GPSTracking)
@@ -198,9 +554,52 @@ def create_notification(notification: schemas.WhatsAppNotificationCreate, db: Se
 def create_delivery(delivery: schemas.DeliveryCreate, db: Session = Depends(get_db)):
     return crud.create_delivery(db=db, delivery=delivery)
 
-@app.get("/deliveries/", response_model=List[schemas.Delivery])
+@app.get("/deliveries/", response_model=List[schemas.DeliveryBase])
 def read_deliveries(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return crud.get_items(db, models.Delivery, skip=skip, limit=limit)
+
+@app.get("/delivery/{delivery}", response_model=schemas.DeliveryApp)
+def deliveries_app(delivery: str, db: Session = Depends(get_db)):
+    # print(datetime.strftime(date, "%Y-%m-%d %H:%M:%S.000-03 "))
+    # print(date+" 0:00:0.000-03")
+    # stmt= select(models.Delivery.id, models.Delivery.routeid, models.Delivery.ordernumber, models.Delivery.clientname,models.Driver.name, models.Vehicle.name, models.Delivery.status, models.RouteItem.address, models.RouteItem.address_number, models.RouteItem.city, models.RouteItem.state, models.RouteItem.zipcode,models.RouteItem.latitude, models.RouteItem.longitude).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.RouteItem, models.RouteItem.ordernumber == models.Delivery.ordernumber).join(models.Driver, models.Driver.id == models.Route.driverid).join(models.Vehicle, models.Vehicle.id == models.Route.vehicleid).where(models.Driver.cpf == driver).where(models.Delivery.deliveredat>date)
+    # print(stmt)
+    return db.query(models.Delivery.id, models.Delivery.routeid, models.Delivery.ordernumber, models.Delivery.clientname,models.Driver.name.label("driver_name"), models.Vehicle.name.label("vehicle_name"), models.Delivery.status, models.RouteItem.address, models.RouteItem.address_number, models.RouteItem.city, models.RouteItem.state, models.RouteItem.zipcode,models.RouteItem.latitude, models.RouteItem.longitude, models.Route.createdat).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.RouteItem, models.RouteItem.ordernumber == models.Delivery.ordernumber).join(models.Driver, models.Driver.id == models.Route.driverid).join(models.Vehicle, models.Vehicle.id == models.Route.vehicleid).where(models.Delivery.id == delivery).first();
+
+@app.get("/deliveries/{driver}", response_model=List[schemas.DeliveryApp])
+def deliveries_app(driver: str, db: Session = Depends(get_db)):
+    # print(datetime.strftime(date, "%Y-%m-%d %H:%M:%S.000-03 "))
+    # print(date+" 0:00:0.000-03")
+    # stmt= select(models.Delivery.id, models.Delivery.routeid, models.Delivery.ordernumber, models.Delivery.clientname,models.Driver.name, models.Vehicle.name, models.Delivery.status, models.RouteItem.address, models.RouteItem.address_number, models.RouteItem.city, models.RouteItem.state, models.RouteItem.zipcode,models.RouteItem.latitude, models.RouteItem.longitude).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.RouteItem, models.RouteItem.ordernumber == models.Delivery.ordernumber).join(models.Driver, models.Driver.id == models.Route.driverid).join(models.Vehicle, models.Vehicle.id == models.Route.vehicleid).where(models.Driver.cpf == driver).where(models.Delivery.deliveredat>date)
+    # print(stmt)
+    return db.query(models.Delivery.id, models.Delivery.routeid, models.Delivery.ordernumber, models.Delivery.clientname,models.Driver.name.label("driver_name"), models.Vehicle.name.label("vehicle_name"), models.Delivery.status, models.RouteItem.address, models.RouteItem.address_number, models.RouteItem.city, models.RouteItem.state, models.RouteItem.zipcode,models.RouteItem.latitude, models.RouteItem.longitude).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.RouteItem, models.RouteItem.ordernumber == models.Delivery.ordernumber).join(models.Driver, models.Driver.id == models.Route.driverid).join(models.Vehicle, models.Vehicle.id == models.Route.vehicleid).where(models.Driver.cpf == driver).all();
+
+@app.get("/deliveries/finish/{driver}/{date}", response_model=List[schemas.DeliveryApp])
+def deliveries_app_historico(driver: str, date: str, db: Session = Depends(get_db)):
+    # print(datetime.strftime(date, "%Y-%m-%d %H:%M:%S.000-03 "))
+    # print(date+" 0:00:0.000-03")
+    # stmt= select(models.Delivery.id, models.Delivery.routeid, models.Delivery.ordernumber, models.Delivery.clientname,models.Driver.name, models.Vehicle.name, models.Delivery.status, models.RouteItem.address, models.RouteItem.address_number, models.RouteItem.city, models.RouteItem.state, models.RouteItem.zipcode,models.RouteItem.latitude, models.RouteItem.longitude).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.RouteItem, models.RouteItem.ordernumber == models.Delivery.ordernumber).join(models.Driver, models.Driver.id == models.Route.driverid).join(models.Vehicle, models.Vehicle.id == models.Route.vehicleid).where(models.Driver.cpf == driver).where(models.Delivery.deliveredat>date)
+    # print(stmt)
+    date_obj = datetime.combine(
+    datetime.strptime(date, "%Y-%m-%d").date(),
+    time.min
+    )
+
+    tomorrow = date_obj + timedelta(days=1)
+    print(date_obj)
+    print(tomorrow)
+
+    stmt = select(models.Delivery.id, models.Delivery.routeid, models.Delivery.ordernumber, models.Delivery.clientname,models.Driver.name.label("driver_name"), models.Vehicle.name.label("vehicle_name"), models.Delivery.status, models.RouteItem.address, models.RouteItem.address_number, models.RouteItem.city, models.RouteItem.state, models.RouteItem.zipcode,models.RouteItem.latitude, models.RouteItem.longitude).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.RouteItem, models.RouteItem.ordernumber == models.Delivery.ordernumber).join(models.Driver, models.Driver.id == models.Route.driverid).join(models.Vehicle, models.Vehicle.id == models.Route.vehicleid).where(models.Driver.cpf == driver).filter(
+    models.Delivery.deliveredat >= date_obj,
+    models.Delivery.deliveredat < tomorrow)
+
+    print(stmt)
+
+    res = db.query(models.Delivery.id, models.Delivery.routeid, models.Delivery.ordernumber, models.Delivery.clientname,models.Driver.name.label("driver_name"), models.Vehicle.name.label("vehicle_name"), models.Delivery.status, models.RouteItem.address, models.RouteItem.address_number, models.RouteItem.city, models.RouteItem.state, models.RouteItem.zipcode,models.RouteItem.latitude, models.RouteItem.longitude).join(models.Route, models.Route.id == models.Delivery.routeid).join(models.RouteItem, models.RouteItem.ordernumber == models.Delivery.ordernumber).join(models.Driver, models.Driver.id == models.Route.driverid).join(models.Vehicle, models.Vehicle.id == models.Route.vehicleid).where(models.Driver.cpf == driver).filter(
+    models.Delivery.deliveredat >= date_obj,
+    models.Delivery.deliveredat < tomorrow).all();
+    print(res)
+    return res
 
 @app.put("/deliveries/{delivery_id}", response_model=schemas.Delivery)
 def update_delivery(delivery_id: int, delivery: schemas.DeliveryUpdate, db: Session = Depends(get_db)):
@@ -211,95 +610,62 @@ def delete_delivery(delivery_id: int, db: Session = Depends(get_db)):
     crud.delete_item(db, models.Delivery, delivery_id)
     return {"message": "Delivery deleted"}
 
+# --- AUTH ENDPOINTS ---
+
+from datetime import timedelta
+import jwt
+from fastapi import status
+
+SECRET_KEY = "SuaChaveSecretaSuperSegura" # Em produção, use uma variável de ambiente
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24 horas
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+@app.post("/drivers/login", response_model=schemas.Token)
+def login_driver(login_data: schemas.DriverLogin, db: Session = Depends(get_db)):
+    driver = crud.get_driver_by_cpf(db, cpf=login_data.cpf)
+    if not driver or not crud.verify_password(login_data.passwordHash, driver.passwordHash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email ou senha incorretos",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": driver.email, "id": driver.id, "name": driver.name}, 
+        expires_delta=access_token_expires
+    )
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer",
+        "driver": driver
+    }
+
+    
 
 
 # --- ERP PEDIDOS ENDPOINTS ---
 
 
 
-<<<<<<< Updated upstream
-@app.get("/erp/pedidos/{numero_pedido}")
-def get_erp_pedido_by_numero(numero_pedido: str, db: Session = Depends(get_erp_db)):
-=======
 @app.get("/erp/pedidos/{num_nota}")
 def get_erp_pedido_by_numero(num_nota: str, db: Session = Depends(get_db), db_erp: Session = Depends(get_erp_db)):
->>>>>>> Stashed changes
     """
     Buscar pedido do banco ERP com 3 queries:
     1. PEDIDO - informações do pedido
     2. DOCTOS - informações da nota (cliente, CNPJ, código de acesso)
     3. nfenotas - endereço da nota
     """
-<<<<<<< Updated upstream
-    try:
-        # Query 1: Buscar na tabela PEDIDO
-        query_pedido = text("""
-            SELECT *, empresa.emptelef as telefone FROM pedido, empresa
-            WHERE pedido = :numero_pedido
-            LIMIT 1
-        """)
-        result_pedido = db.execute(query_pedido, {"numero_pedido": numero_pedido})
-        pedido_row = result_pedido.fetchone()
-        telefone = pedido_row.telefone
-        if not pedido_row:
-            raise HTTPException(status_code=404, detail="Pedido não encontrado")
-        
-        # Query 2: Buscar na tabela DOCTOS usando o número do pedido
-        query_doctos = text("""
-            SELECT * FROM doctos
-            WHERE notpedido = :numero_pedido
-            LIMIT 1
-        """)
-        result_doctos = db.execute(query_doctos, {"numero_pedido": numero_pedido})
-        doctos_row = result_doctos.fetchone()
-        
-        if not doctos_row:
-            raise HTTPException(status_code=404, detail="Nota fiscal não encontrada para este pedido")
-        
-        # Extrair notcodac para buscar endereço
-        notcodac = doctos_row._mapping.get('notcodac') if hasattr(doctos_row, '_mapping') else doctos_row[doctos_row.keys().index('notcodac')] if hasattr(doctos_row, 'keys') else None
-        
-        # Query 3: Buscar na tabela nfenotas usando notcodac
-        endereco_data = {}
-        if notcodac:
-            query_nfenotas = text("""
-                SELECT nfenfanem, nfenmuemi, nfenbaiem, nfennomue, nfenesemi
-                FROM nfenotas
-                WHERE nfencodac = :notcodac
-                LIMIT 1
-            """)
-            result_nfenotas = db.execute(query_nfenotas, {"notcodac": notcodac})
-            nfenotas_row = result_nfenotas.fetchone()
-            
-            if nfenotas_row:
-                endereco_data = {
-                    "nfenfanem": nfenotas_row[0],
-                    "nfenmuemi": nfenotas_row[1],
-                    "nfenbaiem": nfenotas_row[2],
-                    "nfennomue": nfenotas_row[3],
-                    "nfenesemi": nfenotas_row[4],
-                    "telefone": telefone
-                }
-        
-        # Juntar dados de DOCTOS
-        doctos_data = {
-            "nosempant": doctos_row._mapping.get('nosempant') if hasattr(doctos_row, '_mapping') else doctos_row[doctos_row.keys().index('nosempant')] if hasattr(doctos_row, 'keys') else None,
-            "nosempcgc": doctos_row._mapping.get('nosempcgc') if hasattr(doctos_row, '_mapping') else doctos_row[doctos_row.keys().index('nosempcgc')] if hasattr(doctos_row, 'keys') else None,
-        }
-        
-        # Retornar dados combinados
-        return {
-            "pedido": numero_pedido,
-            **doctos_data,
-            **endereco_data
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Erro ao buscar pedido: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erro ao buscar pedido do ERP: {str(e)}")
-=======
 
     stmt = select(func.count()).select_from(models.RouteItem).where(models.RouteItem.ordernumber==num_nota)
     print(stmt)
@@ -309,12 +675,12 @@ def get_erp_pedido_by_numero(num_nota: str, db: Session = Depends(get_db), db_er
         try:
             # Query 1: Buscar na tabela PEDIDO e EMPRESA (para telefone)
             query_pedido = text("""
-                SELECT p.pedido, n.nfencolot as numero_nota, n.nfenlogde as rua, n.nfennumde as numero, n.nfennomud as cidade, n.nfenesemi as estado, n.nfencepem as cep, nfenbaide as bairro, e.emptelef as telefone
+                SELECT p.pedido, n.nfencolot as numero_nota, n.nfenlogde as rua, n.nfennumde as numero, n.nfennomud as cidade, n.nfenesemi as estado, p.pedentcep as cep, nfenbaide as bairro, e.emptelef as telefone
                 FROM nfenotas n
                 LEFT JOIN doctos d ON d.notcodac = n.nfencodac
                 LEFT JOIN pedido p ON p.pedido = d.notpedido
                 LEFT JOIN empresa e ON p.pedcliente = e.empresa
-                WHERE n.nfencolot = :num_nota AND p.deposito = 1 AND p.pedusu NOT LIKE '%MICHELE%'
+                WHERE n.nfencolot = :num_nota AND p.deposito = 1
                 LIMIT 1
             """)
             result_pedido = db_erp.execute(query_pedido, {"num_nota": num_nota})
@@ -366,8 +732,6 @@ def get_erp_pedido_by_numero(num_nota: str, db: Session = Depends(get_db), db_er
             raise HTTPException(status_code=500, detail=f"Erro ao buscar pedido do ERP: {str(e)}")
     else:
         raise HTTPException(status_code=423, detail=f"Já existe uma rota com esse pedido!")
->>>>>>> Stashed changes
-
 
 
 # --- Dashboard ---
@@ -378,7 +742,526 @@ def get_erp_pedido_by_numero(num_nota: str, db: Session = Depends(get_db), db_er
 def get_dashboard(db: Session = Depends(get_db)):
         return crud.get_dashboard(db)
 
-# Adicionar este endpoint ao main.py
+
+# import httpx
+
+# @app.get("/dashboard/vehicle-map")
+# async def get_dashboard_map(db: Session = Depends(get_db)):
+#     """
+#     Retorna a localização atual de todos os veículos que possuem rotas em andamento,
+#     junto com as informações de endereço de cada item da rota (route_items).
+#     """
+#     response = {}
+#     async with httpx.AsyncClient() as client:
+#         response = await client.get(
+#             "https://api.mobiltracker.com.br/trackers/last-locations", headers={
+#             "Authorization": "AuthDevice aa4a6dbc0484446dbff5b25ba44685df"
+#             }
+#         )
+
+#         # Criamos um gerenciador de contexto usando a sua função get_erp_db (ou get_db)
+#         # Se get_erp_db for um generator (com yield), usamos contextlib.contextmanager
+#     #     from contextlib import contextmanager
+        
+#     #     # Criando o gerenciador de contexto para abrir e fechar o banco com segurança
+#     #     managed_get_db = contextmanager(get_db) # ou get_db, dependendo de qual tabela 'models.Route' usa
+        
+#     # with managed_get_db() as db:
+#     #     for car in response.json():
+#     #         print(car)
+            
+#     #         query = db.scalars(select(models.Route.id).where(models.Route.vehicleid == int(car['trackerId'])).where(models.Route.status.like('%in_progress%'))).first()
+#     #         print(query)
+#     #         if(query is not None):
+#     #             tracking: schemas.GPSTrackingCreate = {
+#     #                 "routeid": query,
+#     #                 "latitude": car['latitude'],
+#     #                 "longitude": car['longitude']
+#     #             }
+#     # # 1. Buscar rotas em progresso
+#     active_routes = db.query(models.Route).filter(models.Route.status == "in_progress").all()
+#     # print(response.json())
+#     results = []
+#     # print(enumerate(active_routes))
+#     data = response.json()
+#     for index, route in enumerate(active_routes):
+#         # Pegar o último GPS
+#         last_gps = {}
+#         for car in data:
+#             # print(type(car["trackerId"]))
+#             if(car["trackerId"]==route.vehicleid):
+#                 last_gps = car 
+#         # print(last_gps)
+#         if not last_gps:
+#             continue
+
+        
+            
+#         # Pegar os itens da rota (pedidos) com endereço
+#         route_items = db.query(models.RouteItem)\
+#             .filter(models.RouteItem.routeid == route.id)\
+#             .all()
+
+#         # print(car['speed'])
+
+#         rota = {}
+
+#         # print("\nCarro: ", last_gps['trackerId'], "Velocidade: ", last_gps['speed'])
+#         if(last_gps['speed'] != 0):    
+#             coordPayloadJobs = []
+#             for item in route_items:
+#                 # print(item)
+#                 coordPayloadJobs.append({
+#                     "id": item.id,
+#                     "location": [item.longitude, item.latitude]
+#                 })
+
+#             # print(coordPayloadJobs)
+
+#             payload={
+#                 "jobs": coordPayloadJobs,
+#                 "vehicles": [
+#                     {
+#                         "id": index,
+#                         "profile": "driving-hgv",
+#                         "start": [last_gps["longitude"], last_gps["latitude"]] 
+#                     }
+#                 ]
+#             }
+#             # print(payload)
+
+            
+#             response = requests.post(
+#                 "https://api.openrouteservice.org/optimization", json=payload, headers={
+#                 "Authorization": "",
+#                 "Content-Type": "application/json"
+#                 }
+#             )
+#             print("\n\n\n---nOTIMIZOU---\n\n\n")
+#             rota = response.json()
+#             # Fim do if
+
+
+
+#         coordinates = {
+#             "coordinates": []
+#         }
+#         values = {}
+
+#         if not rota:
+#             coordinates["coordinates"].append([last_gps["longitude"], last_gps['latitude']])
+#             for items in route_items:
+#                 coordinates['coordinates'].append([items.longitude, items.latitude])
+#         # print(rota)
+#         else:
+#             for ponto in rota['routes'][0]['steps']:
+#                 if(ponto["type"]!="end"):
+#                     coordinates['coordinates'].append([ponto['location'][0], ponto['location'][1]])
+#         # print(rota)
+#         # print(coordinates)
+
+#         rotaResponse = requests.post("https://api.openrouteservice.org/v2/directions/driving-hgv/geojson", json=coordinates, headers={
+#             "Authorization": "",
+#             "Content-Type": "application/json"
+#         })
+
+#         # print("Resultado da rota: ", rotaResponse.json())
+
+#         rotaSource = rotaResponse.json()
+
+#         results.append({
+#             "route_id": route.id,
+#             "color": route.color,
+#             "vehicle": {
+#                 "id": route.vehicle.id,
+#                 "name": route.vehicle.name,
+#                 "plate": route.vehicle.plate
+#             },
+#             "driver": {
+#                 "id": route.driver.id,
+#                 "name": route.driver.name
+#             },
+#             "car_status": {
+#                 **last_gps
+#             },
+#             "route_source": {
+#                 **rotaSource
+#             },
+#             "orders": [
+#                 {
+#                     "id": item.id,
+#                     "order_number": item.ordernumber,
+#                     "address": f"{item.address}, {item.neighborhood}, {item.city} - {item.state}",
+#                     "zipcode": item.zipcode,
+#                     "latitude": item.latitude,
+#                     "longitude": item.longitude,
+#                     "status": item.status
+#                 } for item in route_items if item.address # Apenas itens com endereço
+#             ]
+#         })
+        
+#     return results
+
+from sqlalchemy.orm import selectinload
+import httpx
+
+@app.get("/dashboard/vehicle-map")
+async def get_dashboard_map(db: Session = Depends(get_db)):
+
+    async with httpx.AsyncClient(timeout=14) as client:
+
+        tracker_response = await client.get(
+            "https://api.mobiltracker.com.br/trackers/last-locations",
+            headers={
+                "Authorization": "AuthDevice aa4a6dbc0484446dbff5b25ba44685df"
+            }
+        )
+
+        tracker_response.raise_for_status()
+
+        tracker_data = tracker_response.json()
+
+    gps_map = {
+        int(car["trackerId"]): car
+        for car in tracker_data
+    }
+
+    active_routes = (
+        db.query(models.Route)
+        .options(
+            selectinload(models.Route.items),
+            selectinload(models.Route.vehicle),
+            selectinload(models.Route.driver)
+        )
+        .filter(models.Route.status == "in_progress")
+        .all()
+    )
+
+    results = []
+
+    async with httpx.AsyncClient(timeout=14) as client:
+
+        for index, route in enumerate(active_routes):
+
+            last_gps = gps_map.get(route.vehicleid)
+
+            if not last_gps:
+                continue
+
+            route_items = route.items
+
+            rota_otimizada = {}
+
+            coordinates = {
+                "coordinates": []
+            }
+
+            # if not rota_otimizada:
+
+            coordinates["coordinates"].append(
+                [
+                    last_gps["longitude"],
+                    last_gps["latitude"]
+                ]
+            )
+
+            for item in route_items:
+                print(item)
+                if item.latitude and item.longitude:
+
+                    coordinates["coordinates"].append(
+                        [
+                            item.longitude,
+                            item.latitude
+                        ]
+                    )
+
+            print(coordinates)
+            # else:
+
+            #     try:
+
+            #         for ponto in rota_otimizada["routes"][0]["steps"]:
+
+            #             if ponto["type"] != "end":
+
+            #                 coordinates["coordinates"].append(
+            #                     [
+            #                         ponto["location"][0],
+            #                         ponto["location"][1]
+            #                     ]
+            #                 )
+
+            #     except Exception as e:
+
+            #         print(
+            #             f"Erro ao montar coordenadas da rota {route.id}: {e}"
+            #         )
+
+            rota_source = {}
+
+            if len(coordinates["coordinates"]) >= 2:
+
+                try:
+
+                    directions_response = await client.post(
+                        "https://api.openrouteservice.org/v2/directions/driving-hgv/geojson",
+                        json=coordinates,
+                        headers={
+                            "Authorization": ORS_KEY,
+                            "Content-Type": "application/json"
+                        }
+                    )
+                    # print(directions_response)
+                    if directions_response.status_code == 200:
+                        rota_source = directions_response.json()
+
+                except Exception as e:
+
+                    print(
+                        f"Erro ao gerar geometria da rota {route.id}: {e}"
+                    )
+
+            results.append({
+                "route_id": route.id,
+                "color": route.color,
+
+                "vehicle": {
+                    "id": route.vehicle.id,
+                    "name": route.vehicle.name,
+                    "plate": route.vehicle.plate
+                },
+
+                "driver": {
+                    "id": route.driver.id,
+                    "name": route.driver.name
+                },
+
+                "car_status": last_gps,
+
+                "route_source": rota_source,
+
+                "orders": [
+                    {
+                        "id": item.id,
+                        "order_number": item.ordernumber,
+                        "address": f"{item.address}, {item.address_number}, {item.neighborhood}, {item.city} - {item.state}",
+                        "zipcode": item.zipcode,
+                        "latitude": item.latitude,
+                        "longitude": item.longitude,
+                        "status": item.status,
+                        "reason": item.reason,
+                    }
+                    for item in route_items
+                    if item.address and item.status == "in_progress"
+                ]
+            })
+
+    return results
+
+
+@app.get("/dashboard/vehicle-map/driver/{id_motorista}")
+async def get_dashboard_map_by_driver(id_motorista: int, db: Session = Depends(get_db)):
+
+    # Pegar veiculo da rota pelo id do motorista
+    active_route_by_driver = db.query(models.Route).where(models.Route.driverid==id_motorista).where(models.Route.status=="in_progress").first()
+    print(active_route_by_driver.driverid)
+    active_routes = [active_route_by_driver]
+    async with httpx.AsyncClient(timeout=14) as client:
+
+        tracker_response = await client.get(
+            "https://api.mobiltracker.com.br/trackers/last-locations",
+            headers={
+                "Authorization": f"AuthDevice {MT_KEY}"
+            }
+        )
+
+        tracker_response.raise_for_status()
+
+        tracker_data = tracker_response.json()
+
+    carS = next((u for u in tracker_data if u['trackerId']==active_route_by_driver.vehicleid))
+
+    gps_map = {
+        int(carS['trackerId']): carS    
+    }
+
+    print(gps_map)
+
+    results = []
+
+    # async with httpx.AsyncClient(timeout=40) as client:
+
+    for index, route in enumerate(active_routes):
+
+        last_gps = gps_map.get(route.vehicleid)
+
+        if not last_gps:
+            continue
+
+        route_items = route.items
+
+#         rota_otimizada = {}
+
+
+        # if (
+        #     len(route_items) > 0
+        # ):
+
+        #     jobs = [
+        #         {
+        #             "id": item.id,
+        #             "location": [
+        #                 item.longitude,
+        #                 item.latitude
+        #             ]
+        #         }
+        #         for item in route_items
+        #         if item.latitude and item.longitude
+        #     ]
+
+        #     if jobs:
+
+        #         payload = {
+        #             "jobs": jobs,
+        #             "vehicles": [
+        #                 {
+        #                     "id": index,
+        #                     "profile": "driving-hgv",
+        #                     "start": [
+        #                         last_gps["longitude"],
+        #                         last_gps["latitude"]
+        #                     ]
+        #                 }
+        #             ]
+        #         }
+
+        #         try:
+
+        #             optimization_response = await client.post(
+        #                 "https://api.openrouteservice.org/optimization",
+        #                 json=payload,
+        #                 headers={
+        #                     "Authorization": ORS_KEY,
+        #                     "Content-Type": "application/json"
+        #                 }
+        #             )
+        #             # print("\n Rota: ", route.id, "\n ", optimization_response.json(), "\n\n")
+        #             if optimization_response.status_code == 200:
+        #                 rota_otimizada = optimization_response.json()
+
+        #         except Exception as e:
+        #             print(
+        #                 f"Erro ao otimizar rota {route.id}: {e}"
+        #             )
+
+        coordinates = {
+            "coordinates": []
+        }
+
+        # if not rota_otimizada:
+
+        coordinates["coordinates"].append(
+            [
+                last_gps["longitude"],
+                last_gps["latitude"]
+            ]
+        )
+
+        for item in route_items:
+            print(item)
+            if item.latitude and item.longitude:
+
+                coordinates["coordinates"].append(
+                    [
+                        item.longitude,
+                        item.latitude
+                    ]
+                )
+
+        # else:
+
+        #     try:
+
+        #         for ponto in rota_otimizada["routes"][0]["steps"]:
+
+        #             if ponto["type"] != "end":
+
+        #                 coordinates["coordinates"].append(
+        #                     [
+        #                         ponto["location"][0],
+        #                         ponto["location"][1]
+        #                     ]
+        #                 )
+
+            # except Exception as e:
+
+            #     print(
+            #         f"Erro ao montar coordenadas da rota {route.id}: {e}"
+            #     )
+
+        rota_source = {}
+
+        if len(coordinates["coordinates"]) >= 2:
+
+            try:
+
+                directions_response = await client.post(
+                    "https://api.openrouteservice.org/v2/directions/driving-hgv/geojson",
+                    json=coordinates,
+                    headers={
+                        "Authorization": ORS_KEY,
+                        "Content-Type": "application/json"
+                    }
+                )
+                # print(directions_response)
+                if directions_response.status_code == 200:
+                    rota_source = directions_response.json()
+
+            except Exception as e:
+                print(
+                    f"Erro ao gerar geometria da rota {route.id}: {e}"
+                )
+
+        results.append({
+            "route_id": route.id,
+            "color": route.color,
+
+            "vehicle": {
+                "id": route.vehicle.id,
+                "name": route.vehicle.name,
+                "plate": route.vehicle.plate
+            },
+
+            "driver": {
+                "id": route.driver.id,
+                "name": route.driver.name
+            },
+
+            "car_status": last_gps,
+
+            "route_source": rota_source,
+
+            "orders": [
+                {
+                    "id": item.id,
+                    "order_number": item.ordernumber,
+                    "address": f"{item.address}, {item.neighborhood}, {item.city} - {item.state}",
+                    "zipcode": item.zipcode,
+                    "latitude": item.latitude,
+                    "longitude": item.longitude,
+                    "status": item.status
+                }
+                for item in route_items
+                if item.address
+            ]
+        })
+
+    return results
+
+
+
+
 
 @app.post("/routes/{route_id}/saiu-entrega")
 def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Session = Depends(get_erp_db)):
@@ -396,109 +1279,141 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
         if not itens:
             raise HTTPException(status_code=404, detail="Nenhum pedido encontrado nesta rota")
         
+    
+
+        for item in itens:
+            print(dir(item))
+            # print(item.status)
+            if(item.latitude == None or item.longitude == None):
+                raise HTTPException(status_code=422, detail="Essa rota não pode ser despachada, existem pedidos sem coordenadas")
+
+        mensagem("Matheus", "5511964383702", f"Seu pedido já está em rota!\n\n Código do Pedido: *{item.ordernumber}*")
         # 3. Para cada pedido, buscar dados do ERP e enviar WhatsApp
         pedidos_processados = []
         deliverys = []
-        for item in itens:
-            try:
-                # Buscar dados do pedido no ERP
-                query_doctos = text("""
-                    SELECT d.nosempant, d.nosempcgc, d.notcodac
-                    FROM doctos d
-                    WHERE d.notpedido = :numero_pedido
-                    LIMIT 1
-                """)
-                result_doctos = erp_db.execute(query_doctos, {"numero_pedido": item.ordernumber})
-                doctos_row = result_doctos.fetchone()
+        # for item in itens:
+        #     try:
+        #         # Buscar dados do pedido no ERP usando a tabela pedido para endereço
+        #         query_pedido = text("""
+        #             SELECT p.pedentend, p.pedentcid, p.pedentuf, p.pedentcep, p.pedentbair, e.emptelef as telefone
+        #             FROM pedido p
+        #             LEFT JOIN empresa e ON p.pedcliente = e.empresa
+        #             WHERE p.pedido = :numero_pedido
+        #             LIMIT 1
+        #         """)
+        #         result_pedido = erp_db.execute(query_pedido, {"numero_pedido": item.ordernumber})
+        #         pedido_row = result_pedido.fetchone()
                 
-                if not doctos_row:
-                    continue
+        #         if not pedido_row:
+        #             continue
                 
-                # Buscar endereço
-                query_nfenotas = text("""
-                    SELECT nfenfanem, nfenmuemi, nfenbaiem, nfennomue, nfenesemi
-                    FROM nfenotas
-                    WHERE nfencodac = :notcodac
-                    LIMIT 1
-                """)
-                result_nfenotas = erp_db.execute(query_nfenotas, {"notcodac": doctos_row[2]})
-                nfenotas_row = result_nfenotas.fetchone()
-                
-                # Buscar telefone do cliente (pode estar em outra tabela)
-                # Ajuste conforme sua estrutura de banco
-                
-                query_empresa = text("""
-                    SELECT pedido.pedcliente
-                    FROM pedido
-                    WHERE pedido.pedido = :numero_pedido
-                    LIMIT 1
-                """)
-                result_empresa = erp_db.execute(query_empresa, {"numero_pedido": item.ordernumber})
-                empresatelef = result_empresa.fetchone()
-                
-                
-                query_telefone = text("""
-                    SELECT empresa.emptelef
-                    FROM empresa
-                    WHERE empresa.empresa = :numero_empresa AND empresa.empdemptip = 'Cliente'
-                    LIMIT 1
-                """)
-                result_telefone = erp_db.execute(query_telefone, {"numero_empresa": empresatelef.pedcliente})
-                telefone_row = result_telefone.fetchone()
-                
-                if not telefone_row:
-                    print(f"O cliente do pedido {item.ordernumber} Não é do tipo 'Cliente'")
-                else:    
-                    telefone = telefone_row[0] if telefone_row and telefone_row[0] else None
-                
-                # Preparar dados do pedido
-                pedido_data = {
-                    "numero_pedido": item.ordernumber,
-                    "cliente_nome": doctos_row[0],
-                    "cnpj": doctos_row[1],
-                    "telefone": telefone,
-                    "endereco": nfenotas_row[0] if nfenotas_row else None,
-                    "numero": nfenotas_row[1] if nfenotas_row else None,
-                    "bairro": nfenotas_row[2] if nfenotas_row else None,
-                    "cidade": nfenotas_row[3] if nfenotas_row else None,
-                    "estado": nfenotas_row[4] if nfenotas_row else None,
-                }
-                
-                delivery = schemas.DeliveryCreate(
-                    routeid=item.routeid,
-                    ordernumber=item.ordernumber,
-                    clientname=doctos_row[0],
-                    status="Em rota"
-                )
+        #         p_data = pedido_row._asdict() if hasattr(pedido_row, '_asdict') else dict(pedido_row._mapping)
 
-                entrega = crud.create_delivery(db=db, delivery=delivery)
-                # Enviar WhatsApp se houver telefone
+        #         # Buscar nome do cliente na tabela doctos
+        #         query_doctos = text("""
+        #             SELECT nosempant, nosempcgc FROM doctos
+        #             WHERE notpedido = :numero_pedido
+        #             LIMIT 1
+        #         """)
+        #         result_doctos = erp_db.execute(query_doctos, {"numero_pedido": item.ordernumber})
+        #         doctos_row = result_doctos.fetchone()
+        #         d_data = doctos_row._asdict() if doctos_row and hasattr(doctos_row, '_asdict') else dict(doctos_row._mapping) if doctos_row else {}
 
-                deliverys.append(entrega)
+        #         # Buscar nome da cidade
+        #         cidade_nome = ""
+        #         if p_data.get('pedentcid'):
+        #             query_cidade = text("SELECT cidnome FROM cidade WHERE cidade = :cid_id LIMIT 1")
+        #             result_cidade = erp_db.execute(query_cidade, {"cid_id": p_data['pedentcid']})
+        #             cidade_row = result_cidade.fetchone()
+        #             if cidade_row:
+        #                 cidade_nome = cidade_row[0]
+                
+        #         # Preparar dados do pedido (snake_case)
+        #         pedido_data = {
+        #             "numero_pedido": item.ordernumber,
+        #             "client_name": d_data.get('nosempant'),
+        #             "cnpj": d_data.get('nosempcgc'),
+        #             "telefone": p_data.get('telefone'),
+        #             "address": p_data.get('pedentend').strip() if p_data.get('pedentend') else None,
+        #             "neighborhood": p_data.get('pedentbair').strip() if p_data.get('pedentbair') else None,
+        #             "city": cidade_nome.strip() if cidade_nome else None,
+        #             "state": p_data.get('pedentuf').strip() if p_data.get('pedentuf') else None,
+        #             "zipcode": p_data.get('pedentcep').strip() if p_data.get('pedentcep') else None,
+        #         }
+        #         telefone = pedido_data['telefone']
+        #         telefone = telefone.replace("(", "")
+        #         telefone = telefone.replace(")", "")
+        #         telefone = telefone.replace("-", "")
+        #         telefone = telefone.strip(" ")
+        #         a_tel = telefone.split(" ")
+        #         telefone = "".join(a_tel)
+        #         if "55" != telefone.slice(0, 2):
+        #             telefone = "55"+telefone
+        #         print(telefone)
 
-                # if telefone:
-                #     try:
-                #         mensagem("leandro", "5511975534028", f"Seu pedido já está sendo separado!\n - Número da rota: {item.id}\n - Número do pedido: {item.ordernumber}\n *STATUS*: {item.status}")
-                #         mensagem("leandro", "5511989642157", f"Seu pedido já está sendo separado!\n - Número da rota: {item.id}\n - Número do pedido: {item.ordernumber}\n *STATUS*: {item.status}")
-                #     except Exception as e:
-                #         print(f"Erro ao enviar WhatsApp para {telefone}: {str(e)}")
+        #         mensagem("leandro", "5511948447544", f"Seu pedido já está em rota!\n\n Código do Pedido: *{item.ordernumber}*")
+
+        #         delivery = schemas.DeliveryCreate(
+        #             routeid=item.routeid,
+        #             ordernumber=item.ordernumber,
+        #             clientname=d_data.get('nosempant'),
+        #             status="in_progress"
+        #         )
+
+        #         entrega = crud.create_delivery(db=db, delivery=delivery)
+        #         # Enviar WhatsApp se houver telefone
+
+        #         deliverys.append(entrega)
+
+        #         # if telefone:
+        #         #     try:
+        #         #         mensagem("leandro", "5511975534028", f"Seu pedido já está sendo separado!\n - Número da rota: {item.id}\n - Número do pedido: {item.ordernumber}\n *STATUS*: {item.status}")
+        #         #         mensagem("leandro", "5511989642157", f"Seu pedido já está sendo separado!\n - Número da rota: {item.id}\n - Número do pedido: {item.ordernumber}\n *STATUS*: {item.status}")
+        #         #     except Exception as e:
+        #         #         print(f"Erro ao enviar WhatsApp para {telefone}: {str(e)}")
                 
-                pedidos_processados.append(pedido_data)
+        #         pedidos_processados.append(pedido_data)
                 
-                # Atualizar status do item
-                item.status = "in_progress"
-                db.add(item)
+        #         # Atualizar status do item
+        #         item.status = "in_progress"
+        #         db.add(item)
                 
-            except Exception as e:
-                print(f"Erro ao processar pedido {item.ordernumber}: {str(e)}")
-                continue
+        #     except Exception as e:
+        #         print(f"Erro ao processar pedido {item.ordernumber}: {str(e)}")
+        #         continue
         
+        for i in itens:
+            if not i.ordernumber:
+                i.status = "in_progress"
+                db.add(item)
+                continue
+            query_doctos = text("""
+                SELECT nosempant, nosempcgc FROM doctos d
+                LEFT JOIN nfenotas n ON n.nfencodac = d.notcodac
+                WHERE n.nfencolot = :numero_nota
+                LIMIT 1
+            """)
+            result_doctos = erp_db.execute(query_doctos, {"numero_nota": i.ordernumber})
+            doctos_row = result_doctos.fetchone()
+            d_data = doctos_row._asdict() if doctos_row and hasattr(doctos_row, '_asdict') else dict(doctos_row._mapping) if doctos_row else {}
+
+
+            delivery = schemas.DeliveryCreate(
+                routeid=i.routeid,
+                ordernumber=i.ordernumber,
+                clientname=d_data.get('nosempant'),
+                status="in_progress"
+            )
+
+            entrega = crud.create_delivery(db=db, delivery=delivery)
+            print(i.phone)
+            i.status = "in_progress"
+            db.add(item)
+
         # 4. Atualizar status da rota
         rota.status = "in_progress"
         db.add(rota)
         db.commit()
-        
-        
 
         return {
             "success": True,
@@ -515,24 +1430,188 @@ def route_saiu_entrega(route_id: int, db: Session = Depends(get_db), erp_db: Ses
         print(f"Erro ao marcar rota como saiu para entrega: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erro: {str(e)}")
 
+# -----------
 
 
-# --- WebSocket (GPS) ---
 
-@app.websocket("/gps")
-async def websocket_gps(websocket: WebSocket):
-    await websocket.accept()
+@app.post("/upload-roteiro/{route}/")
+async def upload_roteiro(route: str,file: UploadFile = File(...), db: Session = Depends(get_db)):
+    # Cria a pasta se não existir
+    if not os.path.exists(UPLOAD_DIR):
+        os.makedirs(UPLOAD_DIR)
+    
+    # Define o caminho do arquivo (ex: /var/www/uploads/canhotos/44digitos.jpg)
+    file_path = os.path.join(UPLOAD_DIR+"fotos/", f"roteiro-{route}-{datetime.now().strftime("%d-%m-%Y")}.jpg")
+    
+    print(file_path)
 
-    while True:
-        data= await websocket.receive_json();
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
 
-        print(data)
+    res = db.query(models.RouteItem).where(models.RouteItem.routeid == route).all()
 
-        await websocket.send_text(f"Chegou! \n {data}")
+    print(res[0].ordernumber)
+    for i in res:
+        print(i)
+        order = crud.update_route_item_for_id(db, i.id, schemas.RouteItemUpdate(status="entregue"))
+        print(order.reason+" "+order.status)
+    
 
-        await websocket.send_text(f"Chegou! \n {data['id']}")
+    mensagem("Matheus", "5511964383702", f"*Roteiro salvo!*")
+
+    
+
+    with db as db:
+    # 2. Retrieve the object you want to update
+        delivery = db.scalar(select(models.Delivery).where(models.Delivery.routeid == route))  # Fetches User where id=1
+        
+        if delivery:
+            # date_obj = datetime.combine(
+            #     datetime.strptime(str(datetime.now()), "%Y-%m-%d").date(),
+            #     time.min
+            # )
+            # 3. Modify the attribute directly
+
+            delivery.status = "entregue"
+            delivery.deliveredat = datetime.now()
+            
+            # 4. Commit to persist changes
+            db.commit()
+
+    return {"status": "sucesso", "path": file_path}
+
+
+@app.post("/notification/")
+async def notifica_pedido(orders: list[schemas.Pedido], db: Session = Depends(get_db), erp_db: Session = Depends(get_erp_db)):
+    # Cria a pasta se não existir
+
+    for index, item in enumerate(orders):
+        print(f"{index}: {item}")
+        
+        query_pedido = text("""
+            SELECT p.pedentend, p.pedentcid, p.pedentuf, p.pedentcep, p.pedentbair, e.emptelef as telefone
+            FROM pedido p
+            LEFT JOIN empresa e ON p.pedcliente = e.empresa
+            LEFT JOIN doctos d ON p.pedcliente = d.notpedido
+            LEFT JOIN nfenotas n ON d.notcodac = n.nfencodac
+            WHERE n.nfencolot = :nota
+            LIMIT 1
+        """)
+        result_pedido = erp_db.execute(query_pedido, {"nota": item.ordernumber})
+        pedido_row = result_pedido.fetchone()
+        
+        if not pedido_row:
+            continue
+        
+
+        delivery = schemas.DeliveryCreate(ordernumber=item.ordernumber,clientname=item.client_name,status="notified")
+
+
+        crud.create_delivery(db=db, delivery=delivery)
+
+
+
+        p_data = pedido_row._asdict() if hasattr(pedido_row, '_asdict') else dict(pedido_row._mapping)
+
+        print(p_data["telefone"])
+    
+        telefone = p_data['telefone']
+        telefone = telefone.replace("(", "")
+        telefone = telefone.replace(")", "")
+        telefone = telefone.replace("-", "")
+        telefone = telefone.strip(" ")
+        a_tel = telefone.split(" ")
+        telefone = "".join(a_tel)
+        prefixo = telefone[:2]
+        if "55" != prefixo:
+            telefone = "55"+telefone
+        print(telefone)
+
+        mensagem("Matheus", "5511964383702", f"*Seu pedido já está em rota com uma transportadora parceira*\nCódigo do Pedido: {item.ordernumber}")
+
+    return {"status": "sucesso"}
+
+
+
+
+
+# ---
+
+@app.post("/planilha-roteiro/")
+async def upload_roteiro(rota: schemas.Roteiro, db: Session = Depends(get_db)):
+
+    try:
+        xlpath = cria_roteiro.Roteiro(rota)
+        print(xlpath[-7:-5])
+    except Exception as e:
+        print(e)
+    return FileResponse(
+        path=xlpath, 
+        filename=f"roteiro{xlpath[-7:-5]}.xlsx", 
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    # return xlpath
+
+# --- (GPS) ---
+
+# from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+# scheduler = AsyncIOScheduler()
+# import httpx
+# @app.post("gps")
+# async def atualizar_localizacao(db: Session = Depends(get_db)):
+#     async with httpx.AsyncClient() as client:
+#         response = await client.get(
+#             "https://api.mobiltracker.com.br/trackers/last-locations", headers={
+#             "Authorization": "AuthDevice aa4a6dbc0484446dbff5b25ba44685df"
+#             }
+#         )
+
+#         # Criamos um gerenciador de contexto usando a sua função get_erp_db (ou get_db)
+#         # Se get_erp_db for um generator (com yield), usamos contextlib.contextmanager
+#         from contextlib import contextmanager
+        
+#         # Criando o gerenciador de contexto para abrir e fechar o banco com segurança
+#         managed_get_db = contextmanager(get_db) # ou get_db, dependendo de qual tabela 'models.Route' usa
+        
+#         with managed_get_db() as db:
+#             for car in response.json():
+#                 print(car)
+                
+#                 query = db.scalars(select(models.Route.id).where(models.Route.vehicleid == int(car['trackerId'])).where(models.Route.status.like('%in_progress%'))).first()
+#                 print(query)
+#                 if(query is not None):
+#                     tracking: schemas.GPSTrackingCreate = {
+#                         "routeid": query,
+#                         "latitude": car['latitude'],
+#                         "longitude": car['longitude']
+#                     }
+
+#                     db_tracking = models.GPSTracking(**tracking)
+#                     db.add(db_tracking)
+#                     db.commit()
+#                     db.refresh(db_tracking)
+
+#             # Agora 'db' será uma sessão válida do SQLAlchemy!
+            
+
+
+# @app.on_event("startup")
+# async def startup():
+#     scheduler.add_job(
+#         atualizar_localizacao,
+#         "interval",
+#         seconds=10
+#     )
+#     scheduler.start()
+
+# @app.on_event("shutdown")
+# async def shutdown():
+#     scheduler.shutdown()
+
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)
 

@@ -34,6 +34,7 @@ interface Order {
   latitude?: number;
   longitude?: number;
   status: string;
+  reason?: string;
 }
 
 interface RouteData {
@@ -269,7 +270,8 @@ export default function VehicleDashboardMap() {
             offset: 15,
           }).setHTML(`
                 <div style="padding:5px;">
-                    <b>Pedido #${order.order_number}</b><br/>
+                    ${order.order_number ? `<b>Nota #${order.order_number}</b>` : `<b>${order.reason}</b>`}
+                    <br/>
                     <small>${order.address}</small>
                 </div>
             `);

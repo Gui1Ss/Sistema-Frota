@@ -18,33 +18,57 @@ Esta é uma aplicação FastAPI desenvolvida para gerenciamento logístico, inte
 
 Como o seu sistema não possui interface gráfica, siga estes comandos via terminal SSH:
 
+---
+
+### **UTILIZE O PYTHON NA VERSÃO 3.12.10**
+
+---
+
+<br>
+
 1. **Atualize o sistema e instale o Python/PIP:**
+
    ```bash
    sudo apt update
    sudo apt install python3 python3-pip python3-venv -y
    ```
 
 2. **Clone ou mova os arquivos para uma pasta e acesse-a:**
+
    ```bash
    mkdir logistics-api && cd logistics-api
    ```
 
 3. **Crie e ative um ambiente virtual (recomendado):**
+
    ```bash
    python3 -m venv venv
    source venv/bin/activate
    ```
 
 4. **Instale as dependências:**
+
    ```bash
    pip install -r requirements.txt
    ```
 
-5. **Executar a aplicação:**
+5. **Crie o arquivo de variáveis de ambiente:**
+
+   ```bash
+   cat << 'EOF' > .env
+   GENERAL_API_KEY= < COLOQUE A CHAVE DA API AQUI >
+   DB_ERP_URL = < URL DO BANCO ERP >
+   CANHOTOS_UPLOAD_DIR =  /var/www/uploads/canhotos
+   ORS_API_KEY = < COLOQUE A CHAVE DA API AQUI >
+   MOBIL_TRACKER_API_KEY = < COLOQUE A CHAVE DA API AQUI >
+   EOF
+   ```
+
+6. **Executar a aplicação:**
    ```bash
    uvicorn main:app --host 0.0.0.0 --port 8000
    ```
-   *A API estará acessível em `http://192.168.1.171:8000`*
+   _A API estará acessível em `http://192.168.1.171:8000`_
 
 ---
 
@@ -56,14 +80,16 @@ Como o seu sistema não possui interface gráfica, siga estes comandos via termi
 2. **Abra o Terminal (PowerShell ou CMD) na pasta do projeto.**
 
 3. **Crie e ative um ambiente virtual:**
+
    ```powershell
    python -m venv venv
    .\venv\Scripts\activate
    ```
 
 4. **Instale as dependências:**
+
    ```powershell
-   pip install -r requirements.txt
+   pip install -r requirements-windows.txt
    ```
 
 5. **Executar a aplicação:**
@@ -76,6 +102,7 @@ Como o seu sistema não possui interface gráfica, siga estes comandos via termi
 ## Documentação da API
 
 Após iniciar o servidor, você pode acessar a documentação interativa (Swagger UI) em:
+
 - **URL:** `http://localhost:8000/docs` (ou o IP do seu servidor Debian)
 
 ## Banco de Dados

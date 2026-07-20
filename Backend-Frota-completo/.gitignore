@@ -1,5 +1,4 @@
-__pycahce__/
-Include/
-Lib/
-Scripts/
-pyvenv.cfg
+# Created by venv; see https://docs.python.org/3/library/venv.html
+*
+!requirements*
+.env
