@@ -34,6 +34,7 @@ interface Order {
   latitude?: number;
   longitude?: number;
   status: string;
+  reason?: string;
 }
 
 interface RouteData {
@@ -269,7 +270,8 @@ export default function VehicleDashboardMap() {
             offset: 15,
           }).setHTML(`
                 <div style="padding:5px;">
-                    <b>Pedido #${order.order_number}</b><br/>
+                    ${order.order_number ? `<b>Nota #${order.order_number}</b>` : `<b>${order.reason}</b>`}
+                    <br/>
                     <small>${order.address}</small>
                 </div>
             `);
@@ -286,198 +288,6 @@ export default function VehicleDashboardMap() {
           bounds.extend([order.longitude, order.latitude]);
         });
 
-        // console.log(rotaMapa)
-
-        // const routeId = `route-${vehicle.id}`;
-        // const source = map.current?.getSource(routeId);
-
-        // if(car_status.speed == 0 && !source){
-        //     console.log("id do 'veiculo': "+vehicle.id)
-
-        //     // const source = map.current?.getSource(routeId);
-
-        //     if (!source) {
-        //       map.current?.addSource(routeId, {
-        //         type: "geojson",
-        //         data: rotaMapa[index],
-        //       });
-
-        //       map.current?.addLayer({
-        //         id: routeId,
-        //         type: "line",
-        //         source: routeId,
-        //         paint: {
-        //           "line-color": color,
-        //           "line-width": 5,
-        //         },
-        //       });
-        //   }else{
-        //     let coordinatesOpt: {
-        //       id: number;
-        //       location: number[];
-        //     }[] = []
-        //     orders.forEach((e, i)=> e.status!="entregue" ? coordinatesOpt.push({ id: i, location: [e.longitude || 0,e.latitude || 0]}) : "")
-        //     const payload = {
-        //       jobs: coordinatesOpt,
-        //       vehicles: [
-        //         {
-        //           id: index,
-        //           profile: "driving-hgv",
-        //           start: [car_status.longitude, car_status.latitude]
-        //         }
-        //       ]
-        //     }
-        //     // let coordinates=[[car_status.longitude, car_status.latitude]]
-        //     try {
-        //       const response = await fetch(
-        //         "https://api.openrouteservice.org/optimization",
-        //         {
-        //           method: "POST",
-        //           headers: {
-        //             Authorization: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImNhYjZiZTQ3OTgzYTQ4YTRhYzcxMmYyMTNjOTY3MmQ2IiwiaCI6Im11cm11cjY0In0=",
-        //             "Content-Type": "application/json",
-        //           },
-        //           body: JSON.stringify(payload),
-        //         }
-        //       );
-
-        //       const rotasotimizadas = await response.json();
-        //       // console.log(rotasotimizadas)
-        //       // console.log(rotasotimizadas)
-        //       let coordinates:any[] = []
-        //       rotasotimizadas.routes[0].steps.forEach((e: any)=> coordinates.push([e.location[0], e.location[1]]))
-        //       const rotasresponse = await fetch(
-        //         "https://api.openrouteservice.org/v2/directions/driving-hgv/geojson",
-        //         {
-        //           method: "POST",
-        //           headers: {
-        //             Authorization: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImNhYjZiZTQ3OTgzYTQ4YTRhYzcxMmYyMTNjOTY3MmQ2IiwiaCI6Im11cm11cjY0In0=",
-        //             "Content-Type": "application/json",
-        //           },
-        //           body: JSON.stringify({
-        //             coordinates
-        //           }),
-        //         }
-        //       );
-        //       routecoord = await rotasresponse.json();
-        //       let rotas = rotaMapa
-        //       rotas[index] = routecoord
-        //       setRotaMapa(rotas)
-        //       // console.log(rotaMapa)
-        //     } catch (e) {
-        //       console.error(e);
-        //     }
-
-        //     const routeId = `route-${vehicle.id}`;
-
-        //     const source = map.current?.getSource(routeId);
-
-        //     if (!source) {
-        //       map.current?.addSource(routeId, {
-        //         type: "geojson",
-        //         data: routecoord,
-        //       });
-
-        //       map.current?.addLayer({
-        //         id: routeId,
-        //         type: "line",
-        //         source: routeId,
-        //         paint: {
-        //           "line-color": color,
-        //           "line-width": 5,
-        //         },
-        //       });
-        //     } else {
-        //       (source as maplibregl.GeoJSONSource).setData(routecoord);
-        //     }
-
-        //   }
-        // }else{
-        //   // const localAtual = [...localAntigo];
-        //   // localAtual.push([car_status.latitude, car_status.longitude])
-        //   // setLocalAntigo(localAtual)
-
-        //   console.log("Primeiras rotas")
-
-        //   let coordinatesOpt: {
-        //       id: number;
-        //       location: number[];
-        //     }[] = []
-        //     orders.forEach((e, i)=> e.status!="entregue" ? coordinatesOpt.push({ id: i, location: [e.longitude || 0,e.latitude || 0]}) : "")
-        //     const payload = {
-        //       jobs: coordinatesOpt,
-        //       vehicles: [
-        //         {
-        //           id: index,
-        //           profile: "driving-hgv",
-        //           start: [car_status.longitude, car_status.latitude]
-        //         }
-        //       ]
-        //     }
-        //     // let coordinates=[[car_status.longitude, car_status.latitude]]
-        //     try {
-        //       const response = await fetch(
-        //         "https://api.openrouteservice.org/optimization",
-        //         {
-        //           method: "POST",
-        //           headers: {
-        //             Authorization: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImNhYjZiZTQ3OTgzYTQ4YTRhYzcxMmYyMTNjOTY3MmQ2IiwiaCI6Im11cm11cjY0In0=",
-        //             "Content-Type": "application/json",
-        //           },
-        //           body: JSON.stringify(payload),
-        //         }
-        //       );
-
-        //       const rotasotimizadas = await response.json();
-        //       console.log(rotasotimizadas)
-        //       let coordinates:any[] = []
-        //       rotasotimizadas.routes[0].steps.forEach((e: any)=> e.type!="end" ? coordinates.push([e.location[0], e.location[1]]):"")
-        //       console.log(JSON.stringify({coordinates}))
-        //       const rotasresponse = await fetch(
-        //         "https://api.openrouteservice.org/v2/directions/driving-hgv/geojson",
-        //         {
-        //           method: "POST",
-        //           headers: {
-        //             Authorization: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImNhYjZiZTQ3OTgzYTQ4YTRhYzcxMmYyMTNjOTY3MmQ2IiwiaCI6Im11cm11cjY0In0=",
-        //             "Content-Type": "application/json",
-        //           },
-        //           body: JSON.stringify({
-        //             coordinates
-        //           }),
-        //         }
-        //       );
-        //       routecoord = await rotasresponse.json();
-        //       let rotas = rotaMapa
-        //       rotas[index] = routecoord
-        //       setRotaMapa(rotas)
-        //       // console.log(rotaMapa)
-        //     } catch (e) {
-        //       console.error(e);
-        //     }
-
-        //     const routeId = `route-${vehicle.id}`;
-
-        //     const source = map.current?.getSource(routeId);
-
-        //     if (!source) {
-        //       map.current?.addSource(routeId, {
-        //         type: "geojson",
-        //         data: routecoord,
-        //       });
-
-        //       map.current?.addLayer({
-        //         id: routeId,
-        //         type: "line",
-        //         source: routeId,
-        //         paint: {
-        //           "line-color": color,
-        //           "line-width": 5,
-        //         },
-        //       });
-        //     } else {
-        //       (source as maplibregl.GeoJSONSource).setData(routecoord);
-        //     }
-        //   }
         console.log("\n\n\n\n");
       }
 
@@ -506,7 +316,7 @@ export default function VehicleDashboardMap() {
                 </g>
                 <g inkscape:label="Camada 1" inkscape:groupmode="layer" id="layer1" transform="translate(-37.365789,-42.055353)"/>
                 <g id="g9" transform="matrix(0.24764817,0.02421011,-0.02637344,0.22733419,-16.628098,-11.947367)">
-                  <path id="path4" style="display:inline;fill:#aa4c00;fill-opacity:1;stroke-width:0.264583" d="m 93.262012,43.89723 c -16.900001,0.204245 -22.172221,21.39108 -15.855701,42.139707 1.090685,3.582523 2.495622,7.08635 4.153179,10.406055 a 23.594254,13.100682 75.760318 0 1 -1.342276,-4.324573 23.594254,13.100682 75.760318 0 1 6.935639,-26.048034 23.594254,13.100682 75.760318 0 1 7.384704,1.642718 c 0.830403,-0.163765 1.726163,-0.200816 2.682911,-0.09733 8.648202,0.935399 17.094372,12.540384 18.025002,24.211735 0.75798,9.505842 -3.95742,15.012672 -10.30008,14.049832 a 23.594254,13.100682 75.760318 0 1 -6.241527,5.94608 23.594254,13.100682 75.760318 0 1 -12.539394,-6.69431 c 6.719296,11.26923 18.298951,28.11782 22.768911,34.6738 5.67747,-4.62589 16.28554,-16.96775 19.84424,-26.75656 2.10991,-3.93088 3.35381,-8.93922 3.51322,-14.730623 C 133.01043,72.16308 113.73349,43.64957 93.262012,43.89723 Z" transform="matrix(0.94476833,0,0,0.9503428,16.840221,-0.24656237)"/>
+                  <path id="path4" style="display:inline;fill:#aa4c00;fill-opacity:1;stroke-width:0.264583" d="m 93.262012,43.89723 c -16.900001,0.204245 -22.172221,21.39108 -15.855701,42.139707 1.090685,3.582523 2.495622,7.08635 4.153179,10.406055 a 23.594254,13.100682 75.760318 0 1 -1.342276,-4.324573 23.594254,13.100682 75.760318 0 1 6.935639,-26.048034 23.594254,13.100682 75.760318 0 1 7.384704,1.642718 c 0.830403,-0.163765 1.726163,-0.200816 2.682911,-0.09733 8.648202,0.935399 17.094372,12.540384 18.025002,24.211735 0.75798,9.505842 -3.95742,15.012672 -10.30008,14.049832 a 23.594254,13.100682 75.760318 0 1 -6.241527,5.94608 23.594254,13.100682 75.760318 0 1 -12.539394,-6.69431 c 6.719296,11.26923 18.298951,28.1182 22.768911,34.6738 5.67747,-4.62589 16.28554,-16.96775 19.84424,-26.75656 2.10991,-3.93088 3.35381,-8.93922 3.51322,-14.730623 C 133.01043,72.16308 113.73349,43.64957 93.262012,43.89723 Z" transform="matrix(0.94476833,0,0,0.9503428,16.840221,-0.24656237)"/>
                   <path style="display:inline;fill:#aa4c00;fill-opacity:1;stroke-width:0.264583" d="m 84.695251,46.599516 c 5.827438,-4.248421 19.456389,-5.099964 19.456389,-5.099964 l 11.98008,7.154004 c 0,0 -21.334423,-1.094104 -24.870301,-0.823695 -1.082097,0.08276 -6.566168,-1.230345 -6.566168,-1.230345 z" id="path6" sodipodi:nodetypes="cccsc"/>
                   <path style="display:inline;fill:#aa4c00;fill-opacity:1;stroke-width:0.264583" d="m 119.78841,132.59929 c -6.18425,4.36924 -10.85745,7.20478 -10.85745,7.20478 -0.0204,-0.14251 7.98498,-8.84973 9.30908,-9.6839 2.12375,-1.33795 1.19743,0.74662 1.54837,2.47912 z" id="path7" sodipodi:nodetypes="ccsc"/>
                   <path id="path1" style="fill:#d48900;fill-opacity:1;stroke-width:0.264583" d="M 93.262153,43.897033 C 76.362152,44.101278 71.089891,65.28819 77.406412,86.036818 c 1.091151,3.584055 2.496764,7.089552 4.155246,10.41052 3.033418,7.896142 21.447512,34.666362 27.371992,43.355632 5.67746,-4.62589 16.2853,-16.96775 19.844,-26.75656 2.1099,-3.93089 3.3536,-8.93924 3.51301,-14.730653 0.71959,-26.152642 -18.55703,-54.666384 -39.028507,-54.418724 z m 3.958095,23.718556 c 8.648202,0.935399 17.094542,12.540729 18.025162,24.21208 0.81251,10.189681 -4.66409,15.784201 -11.69268,13.740601 -6.575732,-1.91194 -13.239856,-10.182326 -15.4752,-19.481896 -2.516881,-10.470841 1.190006,-19.33095 9.142718,-18.470785 z" inkscape:path-effect="#path-effect4" inkscape:original-d="m 98.599232,48.417716 c -15.982658,9.2e-5 -28.844969,12.935493 -28.729318,28.834276 0.02299,3.149268 0.565487,6.274605 1.605189,9.251059 1.155604,7.798085 20.028322,34.908439 26.902355,44.942669 9.286382,-11.17133 22.832412,-31.36968 26.368622,-41.86895 1.8383,-3.846246 2.79288,-8.056409 2.79291,-12.324778 -9e-5,-15.898988 -12.95689,-28.834475 -28.939758,-28.834276 z m 0.04633,12.584824 c 7.896488,1.48e-4 14.309478,6.386355 14.323788,14.249855 0.0143,7.84772 -6.35226,14.198119 -14.220238,14.198267 -7.868185,1.4e-4 -14.28128,-6.350343 -14.324128,-14.198267 -0.04293,-7.863705 6.323888,-14.249997 14.220578,-14.249855 z" sodipodi:nodetypes="cccccccsssss"/>
@@ -558,18 +368,10 @@ export default function VehicleDashboardMap() {
 
   return (
     <Card className="p-6 mb-6 shadow-md">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-1">
         <h2 className="text-xl font-bold text-slate-900">
           Rastreamento em Tempo Real
         </h2>
-        <div className="flex gap-3 text-xs font-medium">
-          <span className="flex items-center gap-1">
-            <i className="w-3 h-3 rounded-full bg-blue-500"></i> Veículo
-          </span>
-          <span className="flex items-center gap-1">
-            <i className="w-3 h-3 rounded-full bg-red-500"></i> Entrega
-          </span>
-        </div>
       </div>
 
       <div
