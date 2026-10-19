@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
+
+maplibregl.setWorkerUrl(workerUrl);
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Geometry, GeoJSON, GeoJsonProperties } from "geojson";
@@ -121,8 +124,8 @@ export default function VehicleRouteMap({
         container: mapContainer.current,
         // Usando um estilo mais estável e público
         style: "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
-        zoom: 8,
-        center: [-46.72465508007273, -23.44260722147917],
+        zoom: 12,
+        center: [-46.72456358862431, -23.442743154100892],
       });
 
       map.current.on("error", e => {
@@ -163,158 +166,164 @@ export default function VehicleRouteMap({
       const bounds = new maplibregl.LngLatBounds();
       let hasCoords = false;
 
-      for (const [index, route] of source.orders.entries()) {
-        const { orders, color, sequence, latitude, longitude } = route;
+      if (source !== null) {
+        for (const [index, route] of source.orders.entries()) {
+          const { orders, color, sequence, latitude, longitude } = route;
 
-        const sourceG = source.source;
+          const sourceG = source.source;
 
-        const routeColor = "#3b82f6";
+          const routeColor = "#3b82f6";
 
-        if (latitude && longitude) {
-          const vEl = document.createElement("div");
+          if (latitude && longitude) {
+            const vEl = document.createElement("div");
 
-          vEl.innerHTML = `
-            <div style="
-              background:${routeColor};
-              width:30px;
-              height:30px;
-              border-radius:50%;
-              border:2px solid #fff;
-              display:flex;
-              align-items:center;
-              justify-content:center;
-            ">
-               <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="#fff"
-                            stroke-width="2"
-                        >
-                            <rect
-                                x="1"
-                                y="3"
-                                width="15"
-                                height="13"
-                            ></rect>
-                            <polygon
-                                points="16 8 20 8 23 11 23 16 16 16 16 8"
-                            ></polygon>
-                            <circle cx="5.5" cy="18.5" r="2.5"></circle>
-                            <circle cx="18.5" cy="18.5" r="2.5"></circle>
-                        </svg>
-            </div>
-          `;
-
-          const routeId = `route-${sequence}`;
-          const source = map.current?.getSource(routeId);
-          console.log(sourceG);
-          // Traça a rota
-
-          // Se ele tá andando ou ainda não foi setado o caminho
-          // Ele faz as requisições as api e seta a rota
-
-          if (!source) {
-            map.current?.addSource(routeId, {
-              type: "geojson",
-              data: sourceG,
-            });
-
-            map.current?.addLayer({
-              id: routeId,
-              type: "line",
-              source: routeId,
-              paint: {
-                "line-color": routeColor,
-                "line-width": 5,
-              },
-            });
-            routesRef.current.push(routeId);
-          } else {
-            (source as maplibregl.GeoJSONSource).setData(sourceG);
-          }
-
-          // const cPopup = new maplibregl.Popup({
-          //   offset: 15,
-          // }).setHTML(`
-          //       <div style="padding:10px;">
-          //           <b>Rota# ${sequence}</b><br/>
-          //           <small>Id Veiculo ${vehicle.id}</small><br/>
-          //           <small>Veiculo: ${vehicle.name}</small><br/>
-          //           <small>Placa ${vehicle.plate}</small>
-          //       </div>
-          //   `);
-
-          // const vMarker = new maplibregl.Marker({
-          //   element: vEl,
-          // })
-          //   .setLngLat([car_status.longitude, car_status.latitude])
-          //   .setPopup(cPopup)
-          //   .addTo(currentMap);
-
-          // markersRef.current.push(vMarker);
-
-          // bounds.extend([car_status.longitude, car_status.latitude]);
-
-          hasCoords = true;
-        }
-
-        source.orders.forEach(async (order: any, i: number, array: any) => {
-          if (!order.latitude || !order.longitude || order.status == "entregue")
-            return;
-
-          const pEl = document.createElement("div");
-
-          pEl.innerHTML = `
-                <div
-                    style="
-                        background-color: color-mix(in oklab, ${routeColor}, black ${(order.sequence - 1) * 10}%);
-                        width:30px;
-                        height:30px;
-                        border-radius:50%;
-                        border:2px solid #fff;
-                        display:flex;
-                        align-items:center;
-                        justify-content:center;
-                        box-shadow:0 2px 4px rgba(0,0,0,0.3);
-                    "
-                >
-                    <span
-                        style="
-                            color:#fff;
-                            font-size:15px;
-                            font-weight:bold;
-                        "
-                    >
-                        ${order.sequence}º
-                    </span>
-                </div>
+            vEl.innerHTML = `
+              <div style="
+                background:${routeColor};
+                width:30px;
+                height:30px;
+                border-radius:50%;
+                border:2px solid #fff;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+              ">
+                <svg
+                              width="18"
+                              height="18"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="#fff"
+                              stroke-width="2"
+                          >
+                              <rect
+                                  x="1"
+                                  y="3"
+                                  width="15"
+                                  height="13"
+                              ></rect>
+                              <polygon
+                                  points="16 8 20 8 23 11 23 16 16 16 16 8"
+                              ></polygon>
+                              <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                              <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                          </svg>
+              </div>
             `;
 
-          const pPopup = new maplibregl.Popup({
-            offset: 15,
-          }).setHTML(`
-                <div style="padding:5px;">
-                    ${order.order_number ? `<b>Nota #${order.order_number}</b>` : `<b>${order.reason}</b>`}
-                    <br/>
-                    <small>${order.address}</small>
-                </div>
-            `);
+            const routeId = `route-${sequence}`;
+            const source = map.current?.getSource(routeId);
+            console.log(sourceG);
+            // Traça a rota
 
-          const pMarker = new maplibregl.Marker({
-            element: pEl,
-          })
-            .setLngLat([order.longitude, order.latitude])
-            .setPopup(pPopup)
-            .addTo(currentMap);
+            // Se ele tá andando ou ainda não foi setado o caminho
+            // Ele faz as requisições as api e seta a rota
 
-          markersRef.current.push(pMarker);
+            if (!source) {
+              map.current?.addSource(routeId, {
+                type: "geojson",
+                data: sourceG,
+              });
 
-          bounds.extend([order.longitude, order.latitude]);
-        });
+              map.current?.addLayer({
+                id: routeId,
+                type: "line",
+                source: routeId,
+                paint: {
+                  "line-color": routeColor,
+                  "line-width": 5,
+                },
+              });
+              routesRef.current.push(routeId);
+            } else {
+              (source as maplibregl.GeoJSONSource).setData(sourceG);
+            }
 
-        console.log("\n\n\n\n");
+            // const cPopup = new maplibregl.Popup({
+            //   offset: 15,
+            // }).setHTML(`
+            //       <div style="padding:10px;">
+            //           <b>Rota# ${sequence}</b><br/>
+            //           <small>Id Veiculo ${vehicle.id}</small><br/>
+            //           <small>Veiculo: ${vehicle.name}</small><br/>
+            //           <small>Placa ${vehicle.plate}</small>
+            //       </div>
+            //   `);
+
+            // const vMarker = new maplibregl.Marker({
+            //   element: vEl,
+            // })
+            //   .setLngLat([car_status.longitude, car_status.latitude])
+            //   .setPopup(cPopup)
+            //   .addTo(currentMap);
+
+            // markersRef.current.push(vMarker);
+
+            // bounds.extend([car_status.longitude, car_status.latitude]);
+
+            hasCoords = true;
+          }
+
+          source.orders.forEach(async (order: any, i: number, array: any) => {
+            if (
+              !order.latitude ||
+              !order.longitude ||
+              order.status == "entregue"
+            )
+              return;
+
+            const pEl = document.createElement("div");
+
+            pEl.innerHTML = `
+                  <div
+                      style="
+                          background-color: color-mix(in oklab, ${routeColor}, black ${(order.sequence - 1) * 10}%);
+                          width:30px;
+                          height:30px;
+                          border-radius:50%;
+                          border:2px solid #fff;
+                          display:flex;
+                          align-items:center;
+                          justify-content:center;
+                          box-shadow:0 2px 4px rgba(0,0,0,0.3);
+                      "
+                  >
+                      <span
+                          style="
+                              color:#fff;
+                              font-size:15px;
+                              font-weight:bold;
+                          "
+                      >
+                          ${order.sequence}º
+                      </span>
+                  </div>
+              `;
+
+            const pPopup = new maplibregl.Popup({
+              offset: 15,
+            }).setHTML(`
+                  <div style="padding:5px;">
+                      ${order.order_number ? `<b>Nota #${order.order_number}</b>` : `<b>${order.reason}</b>`}
+                      <br/>
+                      <small>${order.address}</small>
+                  </div>
+              `);
+
+            const pMarker = new maplibregl.Marker({
+              element: pEl,
+            })
+              .setLngLat([order.longitude, order.latitude])
+              .setPopup(pPopup)
+              .addTo(currentMap);
+
+            markersRef.current.push(pMarker);
+
+            bounds.extend([order.longitude, order.latitude]);
+          });
+
+          console.log("\n\n\n\n");
+        }
       }
 
       const vEl = document.createElement("div");
@@ -396,7 +405,7 @@ export default function VehicleRouteMap({
     <div className="flex relative flex h-full overflow-hidden rounded-xl">
       <div
         ref={mapContainer}
-        style={{ width: "100%", height: "700px", background: "#f8fafc" }}
+        style={{ width: "100%", height: "100%", background: "#f8fafc" }}
         className="border overflow-hidden"
       >
         {mapError && (

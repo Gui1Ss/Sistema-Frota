@@ -51,7 +51,7 @@
     "framer-motion": "^11.5.4",
     "input-otp": "^1.2.4",
     "lucide-react": "^0.441.0",
-    "maplibre-gl": "^5.24.0",
+    "maplibre-gl": "^6.10.0",
     "next-themes": "^0.3.0",
     "openrouteservice-js": "^0.4.1",
     "react": "^18.3.1",
@@ -82,6 +82,6 @@
     "prettier": "^3.3.3",
     "tailwindcss": "^4.3.0",
     "typescript": "^5.5.3",
-    "vite": "^5.4.2"
+    "vite": "^8.3.0"
   }
 }

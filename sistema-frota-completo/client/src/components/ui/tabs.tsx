@@ -16,12 +16,13 @@ function Tabs({
   );
 }
 
-function TabsList({
-  className,
-  tab,
-  setTab,
-  ...props
-}: React.ComponentProps<typeof TabsPrimitive.List>) {
+interface TabListProp extends React.ComponentProps<typeof TabsPrimitive.List> {
+  className: string;
+  tab: any;
+  setTab: any;
+}
+
+function TabsList({ className, tab, setTab, ...props }: TabListProp) {
   return (
     <div className="relative">
       <TabsPrimitive.List

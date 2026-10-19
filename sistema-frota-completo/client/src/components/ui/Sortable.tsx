@@ -59,7 +59,9 @@ function Sortable({ id, index, p, setP, setPA, pA, ...props }: SortableProps) {
           )}
 
           <p className="text-xs text-slate-500 pl-2">
-            {p?.address.replace(",", "")}, {p?.address_number}, {p?.city}
+            {p !== undefined
+              ? `${p?.address.replace(",", "")}, ${p?.address_number}, ${p?.city}`
+              : ""}
           </p>
         </div>
       </div>

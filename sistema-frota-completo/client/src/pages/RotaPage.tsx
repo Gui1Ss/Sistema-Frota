@@ -13,6 +13,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -36,7 +37,7 @@ import {
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { useEffect, useState } from "react";
+import { MouseEventHandler, useEffect, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,6 +57,7 @@ import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import VehicleDashboardMap from "@/components/VehicleDashboardMap";
 import VehicleRouteMap from "@/components/VehicleRouteMap";
+import { DialogDescription } from "../components/ui/dialog";
 
 export default function RotaPage() {
   const queryClient = useQueryClient();
@@ -103,6 +105,7 @@ export default function RotaPage() {
   const [itemsLimit, setItemsLimit] = useState(10);
   const [itemsPage, setItemsPage] = useState(0);
   const [statusFilter, setStatusFilter] = useState(".");
+  const [deleteAllItems, setDeleteAllItems] = useState(false);
 
   useEffect(() => {
     setItemsPage(0);
@@ -317,6 +320,29 @@ export default function RotaPage() {
         )
       ) {
         toast.warning("Este pedido já foi adicionado");
+      } else if (tabValue === 2 && motivo == "") {
+        toast.warning("Digite o motivo da parada");
+      } else if (tabValue === 1 && numeroPedido == "") {
+        toast.warning("Digite o código do pedido/nota");
+      } else if (pedidoBuscado === null) {
+        toast.warning("Digite o CEP e as demais informações de endereço");
+      } else if (
+        pedidoBuscado.address_number === null ||
+        pedidoBuscado.address_number === ""
+      ) {
+        toast.warning("Digite o número de endereço");
+      } else if (
+        pedidoBuscado.address === null ||
+        pedidoBuscado.address === ""
+      ) {
+        toast.warning("Digite o endereço");
+      } else if (
+        pedidoBuscado.neighborhood === null ||
+        pedidoBuscado.neighborhood === ""
+      ) {
+        toast.warning("Digite o bairro");
+      } else if (pedidoBuscado.city === null || pedidoBuscado.city === "") {
+        toast.warning("Digite o cidade");
       } else {
         setPedidosBuscados([
           ...pedidosBuscados,
@@ -619,7 +645,7 @@ export default function RotaPage() {
     try {
       console.log(JSON.stringify(rota, null, 2));
       const response = await fetch(
-        "http://192.168.1.18:8000/planilha-roteiro/",
+        "http://192.168.90.20:8000/planilha-roteiro/",
         {
           method: "POST",
           headers: {
@@ -710,6 +736,12 @@ export default function RotaPage() {
       setTabValue(1);
     }
   }, [isDialogOpen]);
+
+  const deleteAllItemsRoute = () => {
+    setPedidosBuscados([]);
+    console.log("clicou");
+    setDeleteAllItems(false);
+  };
 
   return (
     <MainLayout>
@@ -1187,10 +1219,7 @@ export default function RotaPage() {
 
         {/* Modal Nova Rota */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent
-            size="3xl"
-            className="max-w-7xl h-full max-h-[85vh] overflow-y-hidden"
-          >
+          <DialogContent className="max-w-7xl h-full max-h-[85vh] overflow-y-hidden">
             <DialogHeader>
               <DialogTitle>Criar Nova Rotas</DialogTitle>
             </DialogHeader>
@@ -1468,15 +1497,42 @@ export default function RotaPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="col-end-7 col-span-6 mt-5 flex w-full gap-5 ">
-                    <Button className="p-5 flex-9" onClick={handleAddList}>
+                  <div className="col-end-7 col-span-6 mt-5 flex w-full gap-2 ">
+                    <Button className="p-5 flex-20" onClick={handleAddList}>
                       <span>Adicionar Entrega</span>
                     </Button>
-                    <Button className="p-5 flex-1">
-                      <span></span>
+                    <Button
+                      className="p-5 px-3 bg-red-500 hover:bg-red-400"
+                      onClick={() => setDeleteAllItems(true)}
+                    >
+                      <span>
+                        <Trash2 size={18} />
+                      </span>
                     </Button>
                   </div>
                 </div>
+
+                <Dialog open={deleteAllItems} onOpenChange={setDeleteAllItems}>
+                  <DialogContent size="sm">
+                    <DialogHeader>
+                      <DialogTitle> Excluir todos? </DialogTitle>
+                    </DialogHeader>
+                    <DialogDescription>
+                      Tem certeza que deseja excluir todas as paradas criadas?
+                    </DialogDescription>
+
+                    <DialogFooter>
+                      <Button onClick={deleteAllItemsRoute}>Confirmar</Button>
+                      <Button
+                        className="bg-red-500 hover:bg-red-400"
+                        onClick={() => setDeleteAllItems(false)}
+                      >
+                        Cancelar
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
                 {/* {pedidosBuscados.length > 0 && ( */}
                 {pedidosBuscados.length > 0 && (
                   <div className="space-y-3">

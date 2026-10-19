@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
+
+maplibregl.setWorkerUrl(workerUrl);
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Geometry, GeoJSON, GeoJsonProperties } from "geojson";
@@ -93,7 +96,7 @@ export default function VehicleDashboardMap() {
         center: [-46.72465508007273, -23.44260722147917],
       });
 
-      map.current.on("error", e => {
+      map.current.on("error", (e) => {
         console.error("Erro no MapLibre:", e);
         setMapError("Erro ao carregar camadas do mapa. Verifique a conexão.");
       });
@@ -114,8 +117,8 @@ export default function VehicleDashboardMap() {
     if (!currentMap) return;
 
     const updateMarkers = async () => {
-      markersRef.current.forEach(marker => marker.remove());
-      routesRef.current.forEach(routeId => {
+      markersRef.current.forEach((marker) => marker.remove());
+      routesRef.current.forEach((routeId) => {
         if (map.current?.getLayer(routeId)) {
           map.current.removeLayer(routeId);
         }
